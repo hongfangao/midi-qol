@@ -1,0 +1,111 @@
+{
+  "id": "{{name}}",
+  "title": "{{title}}",
+  "description": "{{description}}",
+
+  "version": "{{version}}",
+  "authors": [{ "name": "tposney" }],
+  "socket": true,
+  "scripts": [],
+  "esmodules": ["src/midi-qol.js"],
+  "styles": ["css/styles.css"],
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "2.0.3"
+        }
+      },
+      {
+        "id": "sw5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "2.0.2.2.2.5",
+          "compatible": "2.0.2.2.2.5"
+        }
+      }
+    ],
+    "requires": [
+      {
+        "id": "socketlib",
+        "type": "module"
+      },
+      {
+        "id": "lib-wrapper",
+        "type": "module"
+      },
+      {
+        "id": "dae",
+        "type": "module"
+      }
+    ]
+  },
+  "packs": [
+    {
+      "name": "midiqol-sample-items",
+      "label": "MidiQOL Sample Items",
+      "path": "./packs/sampleitems.db",
+      "module": "world",
+      "type": "Item",
+      "system": "dnd5e",
+      "lang": []
+    }
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    },
+    {
+      "lang": "ja",
+      "name": " 日本語",
+      "path": "lang/ja.json"
+    },
+    {
+      "lang": "ko",
+      "name": "Korean",
+      "path": "lang/ko.json"
+    },
+    {
+      "lang": "fr",
+      "name": "Français",
+      "path": "lang/fr.json"
+    },
+    {
+      "lang": "pt-BR",
+      "name": "Português (Brasil)",
+      "path": "lang/pt-BR.json"
+    },
+    {
+      "lang": "es",
+      "name": "Spanish",
+      "path": "lang/es.json"
+    },
+    {
+      "lang": "de",
+      "name": "Deutsch",
+      "path": "lang/de.json"
+    },
+    {
+      "lang": "it",
+      "name": "Italian",
+      "path": "lang/it.json"
+    }
+  ],
+  "compatibility": {
+    "minimum": 10.286,
+    "verified": 10,
+    "maximum": 11
+  },
+  "bugs": "https://gitlab.com/tposney/midi-qol/-/issues",
+  "flags": {
+    "allowBugReporter": true
+  },
+  "url": "https://gitlab.com/tposney/midi-qol/-/tree/44aa033b67101ffbeec68b336acad0d8231f29c4",
+  "manifest": "https://gitlab.com/tposney/midi-qol/-/raw/44aa033b67101ffbeec68b336acad0d8231f29c4/module.json",
+  "download": "https://gitlab.com/tposney/midi-qol/-/tree/44aa033b67101ffbeec68b336acad0d8231f29c4/package/midi-qol-v{{version}}.zip",
+  "changelog": "https://gitlab.com/tposney/midi-qol/-/blob/44aa033b67101ffbeec68b336acad0d8231f29c4/Changelog.md"
+}

@@ -1,0 +1,36 @@
+<div>
+  <div class="midi-qol-box">
+    Approximate queue size is {{queueCount}} entries {{ queueSize}} bytes
+  </div>
+  <div class="xmidi-qol-flex-container" style="padding:0px; border:0px">
+    <button type="button" id="undo-first-workflow">
+      <i class="fas fa-dice-d20"></i> {{localize "midi-qol.UndoWorkflow.undoFirstWorkflow"}}
+    </button>
+    <div class="flexrow">
+      <table>
+        <tbody>
+          {{#each entries as |entry entryiid|}}
+          <thead>
+            <th style="text-align: center;"> <strong>{{entry.userName}} - {{entry.actorName}} -
+                {{entry.itemName}}</strong></td>
+          </thead>
+          {{#each entry.targets as |targetData targetiid|}}
+          <tr>
+            <td>
+              <div style="text-align: left;">
+                <img src="{{targetData.tokenData.texture.src}}" id="{{entryiid}}-{{targetData.tokenData._id}}"
+                  class="midi-qol-target-name" height="25" style="border:0px">
+                {{targetData.tokenData.name}}
+              </div>
+            </td>
+          </tr>
+          {{/each}}
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    <button type="button" id="remove-first-workflow">
+      <i class="fas fa-dice-d20"></i> {{localize "midi-qol.UndoWorkflow.removeFirstWorkflow"}}
+    </button>
+  </div>
+</div>
