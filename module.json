@@ -109,3 +109,4 @@
   "download": "https://gitlab.com/tposney/midi-qol/-/tree/44aa033b67101ffbeec68b336acad0d8231f29c4/package/midi-qol-v{{version}}.zip",
   "changelog": "https://gitlab.com/tposney/midi-qol/-/blob/44aa033b67101ffbeec68b336acad0d8231f29c4/Changelog.md"
 }
+
