@@ -1,4 +1,4 @@
-import { criticalDamage, nsaFlag, coloredBorders, autoFastForwardAbilityRolls, importSettingsFromJSON, exportSettingsToJSON, enableWorkflow } from "../settings.js"
+import { criticalDamage, itemDeleteCheck, nsaFlag, coloredBorders, autoFastForwardAbilityRolls, importSettingsFromJSON, exportSettingsToJSON, enableWorkflow } from "../settings.js"
 import { configSettings } from "../settings.js"
 import { warn, i18n, error, debug, gameStats, debugEnabled, geti18nOptions, log } from "../../midi-qol.js";
 import { installedModules } from "../setupModules.js";
@@ -11,7 +11,7 @@ export class ConfigPanel extends FormApplication {
       title: game.i18n.localize("midi-qol.ConfigTitle"),
       template: "modules/midi-qol/templates/config.html",
       id: "midi-qol-settings",
-      width: 800,
+      width: 520,
       height: "auto",
       closeOnSubmit: true,
       scrollY: [".tab.workflow"],
@@ -31,25 +31,11 @@ export class ConfigPanel extends FormApplication {
     if (!enableWorkflow) {
       ui.notifications?.error("Worklow automation is not enabled")
     }
-    let wallsBlockRangeOptions = duplicate(geti18nOptions("WallsBlockRangeOptionsNew"));
-    let CoverCalculationOptions = duplicate(geti18nOptions("CoverCalculationOptions"));
-    [{id: "levelsautocover", name: "'Levels Auto Cover'"}, {id:"simbuls-cover-calculator", name: "'Simbuls Cover Calculator'"}].forEach(module => {
-      if (!installedModules.get(module.id)) {
-        wallsBlockRangeOptions[module.id] += ` - ${game.i18n.format("MODMANAGE.DepNotInstalled", { missing: module.name })}`;
-        CoverCalculationOptions[module.id] += ` - ${game.i18n.format("MODMANAGE.DepNotInstalled", { missing: module.name })}`;
-      }
-    });
-    if (!installedModules.get("levels")) {
-      wallsBlockRangeOptions["centerLevels"] += ` - ${game.i18n.format("MODMANAGE.DepNotInstalled", { missing:"Levels" })}`;
-
+    let wallsBlockRangeOptions = geti18nOptions("WallsBlockRangeOptions");
+    if (installedModules.get("dnd5e-helpers")) {
+      wallsBlockRangeOptions = geti18nOptions("WallsBlockRangeOptionsNew");
     }
 
-    if (!installedModules.get("levelsautocover"))
-      CoverCalculationOptions["levelsautocover"] += " (not installed)";
-
-    if (!installedModules.get("simbuls-cover-calculator"))
-      CoverCalculationOptions["simbuls-cover-calculator"] += " (not installed)";
-    
     let quickSettingsOptions = {};
     for (let key of Object.keys(quickSettingsDetails)) {
       quickSettingsOptions[key] = quickSettingsDetails[key].description;
@@ -77,7 +63,6 @@ export class ConfigPanel extends FormApplication {
       rollOtherDamageOptions: geti18nOptions("RollOtherDamageOptions"),
       showReactionAttackRollOptions: geti18nOptions("ShowReactionAttackRollOptions"),
       wallsBlockRangeOptions,
-      CoverCalculationOptions,
       AutoCEEffectsOptions: geti18nOptions("AutoCEEffectsOptions"),
       RecordAOOOptions: geti18nOptions("RecordAOOOptions"),
       EnforceReactionsOptions: geti18nOptions("EnforceReactionsOptions"),
@@ -86,6 +71,7 @@ export class ConfigPanel extends FormApplication {
       //@ts-ignore
       itemTypeLabels: CONFIG.Item.typeLabels,
       hasConvenientEffects: installedModules.get("dfreds-convenient-effects"),
+      itemDeleteCheck,
       hideRollDetailsOptions: geti18nOptions("hideRollDetailsOptions"),
       checkFlankingOptions: geti18nOptions("CheckFlankingOptions"),
       hideRollDetailsHint: i18n("midi-qol.HideRollDetails.HintLong"),
@@ -102,8 +88,7 @@ export class ConfigPanel extends FormApplication {
       rollAlternateOptions: geti18nOptions("RollAlternateOptions"),
       ConsumeResourceOptions: geti18nOptions("ConsumeResourceOptions"),
       AddDeadOptions: geti18nOptions("AddDeadOptions"),
-      LateTargetingOptions: geti18nOptions("LateTargetingOptions"),
-      RemoveConcentrationEffectsOptions: geti18nOptions("RemoveConcentrationEffectsOptions")
+      LateTargetingOptions: geti18nOptions("LateTargetingOptions")
     };
 
     if (debugEnabled > 0) warn("Config Panel: getData ", data)
@@ -120,7 +105,7 @@ export class ConfigPanel extends FormApplication {
     super.activateListeners(html)
 
     html.find(".itemTypeListEdit").on("click", event => {
-      new ItemTypeSelector({}, {}).render(true)
+      new IemTypeSelector({}, {}).render(true)
     })
     html.find(".optionalRulesEnabled").on("click", event => {
       configSettings.optionalRulesEnabled = !configSettings.optionalRulesEnabled;
@@ -167,7 +152,7 @@ export class ConfigPanel extends FormApplication {
   }
 }
 
-export class ItemTypeSelector extends FormApplication {
+export class IemTypeSelector extends FormApplication {
 
   /** @override */
   static get defaultOptions() {
@@ -563,12 +548,12 @@ export async function applySettings(key: string) {
     if (await showDiffs(configSettings, settingsToApply, "", config.shortDescription)) {
       settingsToApply = mergeObject(configSettings, settingsToApply, { overwrite: true, inplace: true });
       if (game.user?.can("SETTINGS_MODIFY")) game.settings.set("midi-qol", "ConfigSettings", settingsToApply);
-    }
+  }
   } else if (config.fileName) {
     try {
       const jsonText = await fetchConfigFile(PATH + config.fileName);
       const configData = JSON.parse(jsonText);
-      if (await showDiffs(configSettings, configData.configSettings, "", config.shortDescription)) {
+      if (await showDiffs(configSettings, configData.configSettings, "" , config.shortDescription)) {
         importSettingsFromJSON(jsonText);
       }
       return;

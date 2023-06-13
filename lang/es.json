@@ -232,18 +232,14 @@
         "all": "Tarjeta + Detalles: PNJs + PJs"
     },
     "midi-qol.rollNPCSavesOptions": {
-      "none": "Mensaje de chat",
-      "auto": "Auto",
-      "letme": "Let Me Roll That For You",
-      "letmeQuery": "LMRTFY + Querey",
-      "mtb": "Monks Token Bar"
+        "auto": "Auto",
+        "letme": "Let Me Roll That For You"
     },
     "midi-qol.playerRollSavesOptions": {
         "none": "Ninguno",
         "letme": "Let Me Roll That For You",
         "letmeQuery": "LMRTFY + Querey",
-        "chat": "Mensaje de chat",
-        "mtb": "Monks Token Bar"
+        "chat": "Mensaje de chat"
     },
     "midi-qol.playerRollSavesOptionsReduced": {
         "none": "Ninguno",

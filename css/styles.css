@@ -42,25 +42,26 @@
   margin: 0;
 }
 
-.dmgBtn-container-mqol .dice-total-full-button {
+.dmgBtn-container-mqol .dice-total-full-damage-button {
   margin-left: 0 !important;
 }
 
-.dmgBtn-container-mqol .dice-total-half-button,
-.dmgBtn-container-mqol .dice-total-double-button,
-.dmgBtn-container-mqol .dice-quarter-button
+.dmgBtn-container-mqol .dice-total-half-damage-button,
+.dmgBtn-container-mqol .dice-total-double-damage-button
 {
   font-size: 0.8em !important;
 }
 
-.dmgBtn-container-mqol .dice-total-double-button {
-  font-size: 0.8em !important;
+.dmgBtn-container-mqol .dice-total-half-damage-button {
   margin-right: 10px !important;
 }
 
-.dmgBtn-container-mqol .dice-total-full-healing-button {
-  margin-right: 0 !important;
+.dmgBtn-container-mqol .dice-total-double-damage-button {
   margin-left: 10px !important;
+}
+
+.dmgBtn-container-mqol .dice-total-full-damage-healing-button {
+  margin-right: 0 !important;
 }
 
 .column-button-container-mqol {
@@ -88,12 +89,6 @@
   transition: opacity 0.2s ease-in-out 0s;
 }
 
-.midi-qol-enable-damage-button {
-  color: green
-}
-.midi-qol-disable-damage-button {
-  color: red
-}
 .xdice-total-full-damage-button,
 .xdice-total-half-damage-button,
 .xdice-total-double-damage-button,

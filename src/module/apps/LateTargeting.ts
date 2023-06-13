@@ -1,6 +1,5 @@
 import { log, debug, i18n, error, warn, geti18nOptions, i18nFormat } from "../../midi-qol.js";
 import { getAutoRollAttack, getTokenPlayerName, isAutoFastAttack } from "../utils.js";
-import { Workflow } from "../workflow.js";
 
 export class LateTargetingDialog extends Application {
   callback: ((data) => {}) | undefined
@@ -17,17 +16,11 @@ export class LateTargetingDialog extends Application {
   //@ts-ignore .Actor, .Item
   constructor(actor: CONFIG.Actor.documentClass, item: CONFIG.Item.documentClass, user, options: any = {}): Application {
     super(options);
-    this.data = { actor, item, user, targets: [] }
-
-    // Handle alt/ctrl etc keypresses when completing the dialog
-    this.callback = function(value) {
-      setProperty(options, "workflowOptions.advantage", options.worfkflowOptions?.advantage || options.pressedKeys.advantage);
-      setProperty(options, "workflowOptions.disadvantage", options.worfkflowOptions?.disadvantage || options.pressedKeys.disadvantage);
-      setProperty(options, "workflowOptions.versatile", options.worfkflowOptions?.versatile || options.pressedKeys.versatile);
-      setProperty(options, "workflowOptions.fastForward", options.worfkflowOptions?.fastForward || options.pressedKeys.fastForward);
-      return options.callback(value);
-    }
-    // this.callback = options.callback;
+    this.data = { actor: undefined, item: undefined, user: game.user, targets: [] }
+    this.data.actor = actor;
+    this.data.item = item;
+    this.data.user = user;
+    this.callback = options.callback;
     return this;
   }
 

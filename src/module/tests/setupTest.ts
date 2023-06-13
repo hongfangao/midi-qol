@@ -1,5 +1,5 @@
 import { applySettings } from "../apps/ConfigPanel.js";
-import { applyTokenDamage, completeItemUse } from "../utils.js";
+import { completeItemUse } from "../utils.js";
 
 const actor1Name = "actor1";
 const actor2Name = "actor2";
@@ -8,7 +8,7 @@ const target2Name = "Orc2";
 const target3Name = "Skeleton1";
 
 export async function busyWait(seconds: number) {
-  return (new Promise(resolve => setTimeout(resolve, seconds * 1000)));
+  await (new Promise(resolve => setTimeout(resolve, seconds * 1000)));
 }
 export async function resetActors() {
   for (let name of [actor1Name, actor2Name, target1Name, target2Name, target3Name]) {
@@ -102,6 +102,7 @@ async function registerTests() {
 
         describe("skill roll tests", function () {
           it("roll perception - 1 dice", function () {
+            console.log("Actor flags are ", duplicate(actor.flags))
             return actor.rollSkill("prc", { chatMessage: false, fastForward: true })
               // .then(skillRoll => { actor.prepareData(); assert.equal(skillRoll.terms[0].number, 1) });
               .then(skillRoll => { actor.prepareData(); expect(skillRoll.terms[0].number).to.equal(1) });
@@ -154,10 +155,11 @@ async function registerTests() {
         });
         describe("initiative rolls", function () {
           it("rolls a normal initiative roll", async function () {
-            const rollResult: Promise<Roll> = new Promise((resolve) => {
+            const rollResult: Promise<Roll> = new Promise(async (resolve) => {
               Hooks.once("createChatMessage", function (chatMessage) {
                 resolve(chatMessage.rolls[0])
               });
+
             });
             const combat = await actor.rollInitiative({ createCombatants: true, rerollInitiative: true });
             await combat.delete();
@@ -167,7 +169,7 @@ async function registerTests() {
           });
           it("rolls an advantage initiative roll", async function () {
             await actor.setFlag(game.system.id, "initiativeAdv", true);
-            const rollResult: Promise<Roll> = new Promise((resolve) => {
+            const rollResult: Promise<Roll> = new Promise(async (resolve) => {
               Hooks.once("createChatMessage", function (chatMessage) {
                 resolve(chatMessage.rolls[0])
               });
@@ -315,11 +317,10 @@ async function registerTests() {
               await cubInterface.removeCondition("Blinded", [target]);
             assert.ok(!cubInterface.hasCondition("Blinded", [target]));
             assert.ok(!!(await completeItemUse(actor.items.getName("Cub Test"))));
-            //@ts-expect-error game.version
-            if (isNewerVersion("11.293", game.version)) await busyWait(0.5);
+            await busyWait(0.5);
             assert.ok(cubInterface.hasCondition("Blinded", [target]));
             //@ts-ignore .label v10
-            const effect: ActiveEffect | undefined = target?.actor?.effects.find(e => (e.name || e.label) === "Cub Test");
+            const effect: ActiveEffect | undefined = target?.actor?.effects.find(e => e.label === "Cub Test");
             results = await target?.actor?.deleteEmbeddedDocuments("ActiveEffect", [effect?.id ?? "bad"]);
             // results = await globalThis.DAE.actionQueue.add(target.actor?.deleteEmbeddedDocuments.bind(target.actor),"ActiveEffect", [effect?.id ?? "bad"]);
             await busyWait(0.5);
@@ -343,10 +344,9 @@ async function registerTests() {
               await ceInterface.removeEffect({ effectName: "Deafened", uuid: target?.actor?.uuid });
             assert.ok(!ceInterface.hasEffectApplied("Deafened", target?.actor?.uuid));
             await completeItemUse(actor.items.getName("CE Test"));
-            await busyWait(0.5);
             assert.ok(await ceInterface.hasEffectApplied("Deafened", target?.actor?.uuid));
             //@ts-ignore .label v10
-            const effect: ActiveEffect | undefined = target?.actor?.effects.find(e => (e.name || e.label) === "CE Test");
+            const effect: ActiveEffect | undefined = target?.actor?.effects.find(e => e.label === "CE Test");
             results = await target?.actor?.deleteEmbeddedDocuments("ActiveEffect", [effect?.id ?? "bad"]);
             await busyWait(0.1);
             if (await ceInterface.hasEffectApplied("Deafened", target?.actor?.uuid)) {
@@ -383,9 +383,9 @@ async function registerTests() {
             game.user?.updateTokenTargets([target2?.id ?? "", target3?.id ?? ""]);
             const target2hp = target2?.actor?.system.attributes.hp.value;
             const target3hp = target3?.actor?.system.attributes.hp.value;
-            await completeItemUse(actor.items.getName("MODTest"), {} , {advantage: true}); // does 10 + 10 to undead
-            const condition2 = target2.actor.effects.contents.filter(ef => (ef.name || ef.label) === "Frightened");
-            const condition3 = target3.actor.effects.contents.filter(ef => (ef.name || ef.label) === "Frightened");
+            await completeItemUse(actor.items.getName("MODTest")); // does 10 + 10 to undead
+            const condition2 = target2.actor.effects.contents.filter(ef => ef.label === "Frightened");
+            const condition3 = target3.actor.effects.contents.filter(ef => ef.label === "Frightened");
             if (condition2.length) await target2.actor.deleteEmbeddedDocuments("ActiveEffect", condition2.map(ae => ae.id))
             if (condition3.length) await target3.actor.deleteEmbeddedDocuments("ActiveEffect", condition3.map(ae => ae.id))
             assert.equal(target2hp - 10, target2?.actor?.system.attributes.hp.value, "non undead takes 10 hp");
@@ -402,8 +402,8 @@ async function registerTests() {
             const target2hp = target2?.actor?.system.attributes.hp.value;
             const target3hp = target3?.actor?.system.attributes.hp.value;
             await completeItemUse(actor.items.getName("MODTestNoActivation")); // does 10 + 10 to undead
-            const condition2 = target2.actor.effects.contents.filter(ef => (ef.name || ef.label) === "Frightened");
-            const condition3 = target3.actor.effects.contents.filter(ef => (ef.name || ef.label) === "Frightened");
+            const condition2 = target2.actor.effects.contents.filter(ef => ef.label === "Frightened");
+            const condition3 = target3.actor.effects.contents.filter(ef => ef.label === "Frightened");
             if (condition2.length) await target2.actor.deleteEmbeddedDocuments("ActiveEffect", condition2.map(ae => ae.id))
             if (condition3.length) await target3.actor.deleteEmbeddedDocuments("ActiveEffect", condition3.map(ae => ae.id))
             assert.equal(target2hp - 20, target2?.actor?.system.attributes.hp.value, "non undead takes 10 hp");
@@ -420,36 +420,36 @@ async function registerTests() {
             assert.ok(target);
             try {
               //@ts-ignore .label v10
-              let hasEffect: any[] = actor.effects.filter(a => (a.name || a.label) === "Macro Execute Test") ?? [];
-              if (hasEffect?.length > 0) await actor.deleteEmbeddedDocuments("ActiveEffect", hasEffect.map(e => e.id))
+              let hasEffect: any[] = actor.effects.filter(a => a.label === "Macro Execute Test") ?? [];
+              if (hasEffect?.length > 0) actor.deleteEmbeddedDocuments("ActiveEffect", hasEffect.map(e => e.id))
               //@ts-ignore .label v10
-              hasEffect = target?.actor?.effects.filter(a => (a.name || a.label) === "Macro Execute Test") ?? [];
-              if (hasEffect?.length > 0) await target?.actor?.deleteEmbeddedDocuments("ActiveEffect", hasEffect.map(e => e.id));
+              hasEffect = target?.actor?.effects.filter(a => a.label === "Macro Execute Test") ?? [];
+              if (hasEffect?.length > 0) target?.actor?.deleteEmbeddedDocuments("ActiveEffect", hasEffect.map(e => e.id));
               game.user?.updateTokenTargets([target?.id ?? ""]);
               await completeItemUse(actor.items.getName("Macro Execute Test"));
               //@ts-ignore .flags v10
               let flags: any = actor.flags["midi-qol"];
               assert.equal(flags?.test, "metest")
               //@ts-ignore .label v10
-              hasEffect = target?.actor?.effects.filter(a => (a.name || a.label) === "Macro Execute Test") ?? [];
+              hasEffect = target?.actor?.effects.filter(a => a.label === "Macro Execute Test") ?? [];
               assert.ok(hasEffect);
               await target?.actor?.deleteEmbeddedDocuments("ActiveEffect", hasEffect.map(e => e.id));
               //@ts-ignore .flags v10
               flags = getProperty(actor.flags, "midi-qol.test");
               assert.ok(!flags?.test);
               //@ts-ignore .label v10
-              hasEffect = target?.actor?.effects.filter(a => (a.name || a.label) === "Macro Execute Test") ?? [];
+              hasEffect = target?.actor?.effects.filter(a => a.label === "Macro Execute Test") ?? [];
               assert.equal(hasEffect.length, 0)
             } finally {
               //@ts-ignore .label v10
-              let hasEffect: any = target?.actor?.effects.filter(a => (a.name || a.label) === "Macro Execute Test") ?? [];
+              let hasEffect: any = target?.actor?.effects.filter(a => a.label === "Macro Execute Test") ?? [];
               await target?.actor?.deleteEmbeddedDocuments("ActiveEffect", hasEffect.map(e => e.id));
               await actor.unsetFlag("midi-qol", "test")
             }
             return true;
           });
           it("tests macro.tokenMagic", async function () {
-            this.timeout(10000);
+            this.timeout(5000);
             const actor = getActor(actor1Name);
             const effectData = { 
               label: "test effect", 
@@ -458,57 +458,49 @@ async function registerTests() {
             assert.ok(globalThis.TokenMagic);
             const theEffects: any[] = await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
             //@ts-ignore .label v10
-            assert.ok(actor.effects.find(ef=> (ef.name || ef.label) === (effectData.name ?? effectData.label)));
+            assert.ok(actor.effects.find(ef=>ef.label === effectData.label));
             await busyWait(3);
-            const actorToken = canvas?.tokens?.placeables.find(t=> t.name === (actor.token?.name ?? actor.name))
+            const actorToken = canvas?.tokens?.placeables.find(t=> t.name === actor.token?.name ?? actor.name)
             assert.ok(actorToken, "found actor token");
             assert.ok(globalThis.TokenMagic.hasFilterId(actorToken,"blur"), "applied blur effect");
             await actor.deleteEmbeddedDocuments("ActiveEffect", theEffects.map(ef=>ef.id));
-            await busyWait(3);
-            assert.equal(globalThis.TokenMagic.hasFilterId(actorToken,"blur"), false, "test blur");
             return true;
           });
-/*          it("tests blur removal", async function() {
+          it("tests blur removal", async function() {
             const actor = getActor(actor1Name);
             const actorToken = canvas?.tokens?.placeables.find(t=> t.name === actor.token?.name)
-            this.retries(10);
+            this.retries(5);
             await busyWait(1);
             assert.equal(globalThis.TokenMagic.hasFilterId(actorToken,"blur"), false, "test blur");
           });
-*/
         });
         describe("onUse Macro Tests", async function () {
           it("Calls actor onUseMacros", async function () {
-            this.timeout(3000); // why is 2 seconds not enough?
             const actor = getActor(actor2Name);
             const macroPasses: string[] = [];
             const hookid = Hooks.on("OnUseMacroTest", (pass: string) => macroPasses.push(pass));
             await completeItemUse(actor.items.getName("OnUseMacroTest")); // Apply the effect
-            //@ts-ignore
             const target = getToken(target2Name);
             game.user?.updateTokenTargets([target?.id ?? ""]);
             await completeItemUse(actor.items.getName("Longsword")); // Apply the effect
             Hooks.off("OnUseMacroTest", hookid);
             //@ts-ignore .label v10
-            let hasEffects: any = actor.effects.filter(a => (a.name || a.label) === "OnUseMacroTest") ?? [];
+            let hasEffects: any = actor.effects.filter(a => a.label === "OnUseMacroTest") ?? [];
             assert.ok(hasEffects);
             await actor.deleteEmbeddedDocuments("ActiveEffect", hasEffects.map(e => e.id))
-            console.error(macroPasses);
-            console.error(Object.keys(game.i18n.translations["midi-qol"]["onUseMacroOptions"]))
-            // Test for all passes except "all"
+            console.log(macroPasses);
+            // Test for all passes except "all", "template placed"
             assert.equal(macroPasses.length, Object.keys(game.i18n.translations["midi-qol"]["onUseMacroOptions"]).length - 1, "on use macro pass length");
           })
 
           it("Calls item onUseMacros", async function () {
             const actor = getActor(actor2Name);
             const macroPasses: string[] = [];
-            const expectedPasses = ['preTargeting', 'preItemRoll', 'templatePlaced', 'preambleComplete', 'preSave', 'postSave', 'preActiveEffects', 'postActiveEffects'];
             const hookid = Hooks.on("Item OnUseMacroTest", (pass: string) => macroPasses.push(pass));
             await completeItemUse(actor.items.getName("Item OnUseMacroTest"));
             Hooks.off("OnUseMacroTest", hookid);
-            // console.log(macroPasses);
-            // console.log(expectedPasses)
-            assert.equal(JSON.stringify(macroPasses), JSON.stringify(expectedPasses));
+            console.log(macroPasses);
+            assert.equal(JSON.stringify(macroPasses), JSON.stringify(['preItemRoll', "templatePlaced", 'preambleComplete', 'preSave', 'postSave', 'preDamageApplication', 'preActiveEffects', 'postActiveEffects']));
           });
         });
       },
@@ -526,25 +518,18 @@ async function registerTests() {
           it("Tests condition immunity disables effect", async function () {
             if (!ceInterface) assert.ok(false, "Convenient Effects Interface not found")
             await ceInterface.addEffect({ effectName: "Paralyzed", uuid: actor.uuid });
-            // assert.ok(await ceInterface.hasEffectApplied("Paralyzed", actor?.uuid));
+            assert.ok(await ceInterface.hasEffectApplied("Paralyzed", actor?.uuid));
             //@ts-ignore .label v10
-            const theEffect: ActiveEffect | undefined = actor.effects.find(ef => (ef.name || ef.label) === "Paralyzed");
-            assert.ok(theEffect, "not paralyzed");
+            const theEffect: ActiveEffect | undefined = actor.effects.find(ef => ef.label === "Paralyzed");
+            assert.ok(theEffect);
             //@ts-ignore .disabled v10
-            assert.ok(!theEffect?.disabled, "paralyzed disabled");
-            //@ts-expect-error
-            if (game.system.id === "dnd5e" && isNewerVersion(game.system.version, "2.0.3") && false) {
-              await actor.update({ "system.traits.ci.value": new Set(["paralyzed"]) });
-            }
-            else await actor.update({ "system.traits.ci.value": ["paralyzed"] });
+            assert.ok(!theEffect?.disabled);
+            await actor.update({ "data.traits.ci.value": ["paralyzed"] });
             //@ts-ignore .disabled v10
-            assert.ok(theEffect?.disabled, "paralyzed not disabled");
-            //@ts-expect-error 
-            if (game.system.id === "dnd5e" && isNewerVersion(game.system.version, "2.0.3") && false) {
-              await actor.update({ "system.traits.ci.value": new Set() });
-            } else await actor.update({ "system.traits.ci.value": [] });
+            assert.ok(theEffect?.disabled);
+            await actor.update({ "data.traits.ci.value": [] });
             //@ts-ignore .disabled v10
-            assert.ok(!theEffect?.disabled, "traits not disabled");
+            assert.ok(!theEffect?.disabled);
             await ceInterface.removeEffect({ effectName: "Paralyzed", uuid: actor.uuid });
             assert.ok(!(await ceInterface.hasEffectApplied("Paralyzed", actor?.uuid)));
 
@@ -614,7 +599,7 @@ async function registerTests() {
       { displayName: "Midi Over Time Tests" }
     );
     globalThis.quench.registerBatch(
-      "quench.midi-qol.midi-qol.flagTests",
+      "quench.midi-qol.otherTests",
       (context) => {
         const { describe, it, assert } = context;
         describe("midi flag tests", async function() {
@@ -680,26 +665,6 @@ async function registerTests() {
             assert.ok(getProperty(actor, "flags.midi-qol.DR.all") === undefined)
           });
 
-        });
-      },
-      { displayName: "Midi Flag Tests" },
-    )
-    globalThis.quench.registerBatch(
-      "quench.midi-qol.midi-qol.otherTests",
-      (context) => {
-        const { describe, it, assert } = context;
-        describe("midi other tests", async function() {
-          it("tests applyTokenDamageMany", async function () {
-            await resetActors();
-            const token = getToken(target2Name);
-            const oldHp = getProperty(token?.actor ?? {}, "system.attributes.hp.value");
-
-            await applyTokenDamage([{damage:5,type:'piercing'}],5,new Set([token]),null,new Set(),{});
-            assert.equal(getProperty(token?.actor ?? {}, "system.attributes.hp.value"), oldHp - 5)
-
-            await applyTokenDamage([{damage:5,type:'healing'}],5,new Set([token]),null,new Set(),{});
-            assert.equal(getProperty(token?.actor ?? {}, "system.attributes.hp.value"), oldHp)
-          });
         });
       },
       { displayName: "Midi Other Tests" },

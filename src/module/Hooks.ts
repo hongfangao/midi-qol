@@ -1,13 +1,11 @@
 import { warn, error, debug, i18n, debugEnabled, overTimeEffectsToDelete, allAttackTypes, failedSaveOverTimeEffectsToDelete } from "../midi-qol.js";
 import { colorChatMessageHandler, diceSoNiceHandler, nsaMessageHandler, hideStuffHandler, chatDamageButtons, processItemCardCreation, hideRollUpdate, hideRollRender, onChatCardAction, betterRollsButtons, processCreateBetterRollsMessage, processCreateDDBGLMessages, ddbglPendingHook, betterRollsUpdate, checkOverTimeSaves } from "./chatMesssageHandling.js";
-import { processUndoDamageCard, socketlibSocket } from "./GMAction.js";
-import { untargetDeadTokens, untargetAllTokens, midiCustomEffect, MQfromUuid, getConcentrationEffect, removeReactionUsed, removeBonusActionUsed, checkflanking, getSystemCONFIG, expireRollEffect, doMidiConcentrationCheck, MQfromActorUuid } from "./utils.js";
+import { deleteItemEffects, processUndoDamageCard, timedAwaitExecuteAsGM } from "./GMAction.js";
+import { untargetDeadTokens, untargetAllTokens, midiCustomEffect, MQfromUuid, checkImmunity, getConcentrationEffect, applyTokenDamage, getConvenientEffectsUnconscious, ConvenientEffectsHasEffect, getConvenientEffectsDead, removeReactionUsed, removeBonusActionUsed, checkflanking, MQfromActorUuid, getSystemCONFIG, expireRollEffect, completeItemRoll, doConcentrationCheck, doMidiConcentrationCheck } from "./utils.js";
 import { OnUseMacros, activateMacroListeners } from "./apps/Item.js"
-import { checkMechanic, configSettings, dragDropTargeting } from "./settings.js";
+import { checkRule, configSettings, dragDropTargeting } from "./settings.js";
 import { installedModules } from "./setupModules.js";
-import { checkWounded, lookupItemMacro, preDeleteTemplate, preRollAbilitySaveHook, preRollDeathSaveHook, preUpdateItemActorOnUseMacro, removeConcentration, rollAbilitySaveHook, rollAbilityTestHook, zeroHPExpiry } from "./patching.js";
-import { preItemUseHook, preDisplayCardHook, preItemUsageConsumptionHook, useItemHook, preRollAttackHook, preRollDamageHook, rollAttackHook, rollDamageHook } from "./itemhandling.js";
-import { Workflow } from "./workflow.js";
+import { preUpdateItemActorOnUseMacro } from "./patching.js";
 
 export const concentrationCheckItemName = "Concentration Check - Midi QOL";
 export var concentrationCheckItemDisplayName = "Concentration Check";
@@ -17,7 +15,7 @@ export var midiFlagTypes: {} = {};
 
 export let readyHooks = async () => {
   // need to record the damage done since it is not available in the update actor hook
-  Hooks.on("preUpdateActor", (actor, update, options, user) => {
+  Hooks.on("preUpdateActor", (actor, update, diff, user) => {
     const hpUpdate = getProperty(update, "system.attributes.hp.value");
     const temphpUpdate = getProperty(update, "system.attributes.hp.temp");
     let concHPDiff = 0;
@@ -30,7 +28,7 @@ export let readyHooks = async () => {
       let temphpDiff = actor.system.attributes.hp.temp - temphpUpdate;
       if (temphpDiff > 0) concHPDiff += temphpDiff
     }
-    setProperty(update, "flags.midi-qol.concentration-damage", concHPDiff);
+    actor.updateSource({ "flags.midi-qol.concentration-damage": concHPDiff })
     return true;
   })
 
@@ -46,50 +44,35 @@ export let readyHooks = async () => {
     if (expiredEffects.length > 0) actor?.deleteEmbeddedDocuments("ActiveEffect", expiredEffects.map(ef => ef.id), { "expiry-reason": "midi-qol:isMoved" });
   });
 
-  Hooks.on("template3dUpdatePreview", (at, t) => {
-    //@ts-expect-error Volumetrictemplates
-    VolumetricTemplates.compute3Dtemplate(t);
-  });
-
   Hooks.on("targetToken", debounce(checkflanking, 150));
 
   Hooks.on("ddb-game-log.pendingRoll", (data) => {
     ddbglPendingHook(data);
   });
 
-  Hooks.on("preDeleteMeasuredTemplate", preDeleteTemplate);
-
   // Handle updates to the characters HP
   // Handle concentration checks
-  Hooks.on("updateActor", async (actor, update, options, user) => {
+  Hooks.on("updateActor", async (actor, update, diff, user) => {
     if (user !== game.user?.id) return;
     const hpUpdate = getProperty(update, "system.attributes.hp.value");
     const temphpUpdate = getProperty(update, "system.attributes.hp.temp");
-    if (hpUpdate !== undefined || temphpUpdate !== undefined) {
-      let hpDiff = getProperty(actor, "flags.midi-qol.concentration-damage") ?? 0;
+    if (hpUpdate === undefined && temphpUpdate === undefined) return true;
 
-      const hpUpdateFunc = async () => {
-        await checkWounded(actor, update, options, user);
-        await zeroHPExpiry(actor, update, options, user);
-      }
-      if (globalThis.DAE?.actionQueue) await globalThis.DAE.actionQueue.add(hpUpdateFunc);
-      else await hpUpdateFunc();
+    if (!configSettings.concentrationAutomation) return true;
+    if (configSettings.noConcnetrationDamageCheck) return true;
 
-      if (configSettings.concentrationAutomation && !configSettings.noConcnetrationDamageCheck && hpDiff > 0 && !options.noConcentrationCheck) {
-        // expireRollEffect.bind(actor)("Damaged", ""); - not this simple - need to think about specific damage types
-        concentrationCheckItemDisplayName = i18n("midi-qol.concentrationCheckName");
-        const concentrationEffect: ActiveEffect | undefined = getConcentrationEffect(actor)
-        if (concentrationEffect) {
-          if (actor.system.attributes.hp.value <= 0) {
-            if (globalThis.DAE?.actionQueue) globalThis.DAE.actionQueue.add(concentrationEffect.delete.bind(concentrationEffect));
-            else await concentrationEffect.delete();
-          } else {
-            const saveDC = Math.max(10, Math.floor(hpDiff / 2));
-            if (globalThis.DAE?.actionQueue) globalThis.DAE.actionQueue.add(doMidiConcentrationCheck, actor, saveDC);
-            else await doMidiConcentrationCheck(actor, saveDC);
-          }
-        }
-      }
+    let hpDiff = getProperty(actor, "flags.midi-qol.concentration-damage") ?? 0;
+    if (hpDiff <= 0) return true;
+    // expireRollEffect.bind(actor)("Damaged", ""); - not this simple - need to think about specific damage types
+    concentrationCheckItemDisplayName = i18n("midi-qol.concentrationCheckName");
+    const concentrationEffect: ActiveEffect | undefined = getConcentrationEffect(actor)
+    if (!concentrationEffect) return true;
+    if (actor.system.attributes.hp.value <= 0) {
+      concentrationEffect.delete();
+    } else {
+      const itemData = duplicate(itemJSONData);
+      const saveDC = Math.max(10, Math.floor(hpDiff / 2));
+      doMidiConcentrationCheck(actor, saveDC);
     }
     return true;
   });
@@ -110,113 +93,59 @@ export let readyHooks = async () => {
 
   // Handle removal of concentration
   Hooks.on("deleteActiveEffect", (...args) => {
-    let [deletedEffect, options, user] = args;
-    const checkConcentration = globalThis.MidiQOL?.configSettings()?.concentrationAutomation;
-    debug("Deleted effects is ", deletedEffect, options);
-    if (!checkConcentration || options.noConcentrationCheck) return;
-
+    let [effect, options, user] = args;
     let gmToUse = game.users?.find(u => u.isGM && u.active);
     if (gmToUse?.id !== game.user?.id) return;
-    if (!(deletedEffect.parent instanceof CONFIG.Actor.documentClass)) return;
+    if (!(effect.parent instanceof CONFIG.Actor.documentClass)) return;
+    let changeFunc = async () => {
+      const checkConcentration = globalThis.MidiQOL?.configSettings()?.concentrationAutomation;
+      if (!checkConcentration) return;
+      let concentrationLabel: any = i18n("midi-qol.Concentrating");
+      if (installedModules.get("dfreds-convenient-effects")) {
+        let concentrationId = "Convenient Effect: Concentrating";
+        let statusEffect: any = CONFIG.statusEffects.find(se => se.id === concentrationId);
+        if (statusEffect) concentrationLabel = statusEffect.label;
+      } else if (installedModules.get("combat-utility-belt")) {
+        concentrationLabel = game.settings.get("combat-utility-belt", "concentratorConditionName")
+      }
+      let isConcentration = effect.label === concentrationLabel;
+      if (!isConcentration) return;
 
-    let concentrationLabel: any = i18n("midi-qol.Concentrating");
-    if (installedModules.get("dfreds-convenient-effects")) {
-      let concentrationId = "Convenient Effect: Concentrating";
-      let statusEffect: any = CONFIG.statusEffects.find(se => se.id === concentrationId);
-      if (statusEffect) concentrationLabel = (statusEffect.name || statusEffect.label);
-    } else if (installedModules.get("combat-utility-belt")) {
-      concentrationLabel = game.settings.get("combat-utility-belt", "concentratorConditionName")
-    }
-    let isConcentration = (deletedEffect.name || deletedEffect.label) === concentrationLabel;
-    const origin = MQfromUuid(deletedEffect.origin);
-    async function changefunc() {
-      if (isConcentration) return await removeConcentration(deletedEffect.parent, deletedEffect.uuid);
-      if (origin instanceof CONFIG.Item.documentClass && origin.parent instanceof CONFIG.Actor.documentClass) {
-        const concentrationData = getProperty(origin.parent, "flags.midi-qol.concentration-data");
-        if (concentrationData && deletedEffect.origin === concentrationData.uuid) {
-          const allConcentrationTargets = concentrationData.targets.filter(target => {
-            let actor = MQfromActorUuid(target.actorUuid);
-            const hasEffects = actor.effects.some(effect =>
-              effect.origin === concentrationData.uuid
-              && !effect.flags.dae.transfer
-              && effect.uuid !== deletedEffect.uuid);
-            return hasEffects;
-          });
-          const concentrationTargets = concentrationData.targets.filter(target => {
-            let actor = MQfromActorUuid(target.actorUuid);
-            const hasEffects = actor.effects.some(effect =>
-              effect.origin === concentrationData.uuid
-              && !effect.flags.dae.transfer
-              && effect.uuid !== deletedEffect.uuid
-              && (effect.name || effect.label) !== concentrationLabel);
-            return hasEffects;
-          });
-          if (["effects", "effectsTemplates"].includes(configSettings.removeConcentrationEffects)
-            && concentrationTargets.length < 1
-            && concentrationTargets.length < concentrationData.targets.length
-            && concentrationData.templates.length === 0
-            && concentrationData.removeUuids.length === 0) {
-            // non concentration effects left
-            await removeConcentration(origin.parent, deletedEffect.uuid);
-          } else if (concentrationData.targets.length !== allConcentrationTargets.length) {
-            // update the concentration data
-            concentrationData.targets = allConcentrationTargets;
-            await origin.parent.setFlag("midi-qol", "concentration-data", concentrationData);
+      // If concentration has expired effects and times-up installed - leave it to TU.
+      if (installedModules.get("times-up")) {
+        let expired = effect.duration?.seconds && (game.time.worldTime - effect.duration.startTime) >= effect.duration.seconds;
+        effect._prepareDuration(); // TODO remove this if v10 change made
+        const duration = effect.duration;
+        expired = expired || (duration && duration.remaining <= 0 && duration.type === "turns");
+        if (expired) return;
+      }
+      // Handle removal of concentration
+      const actor = effect.parent;
+      const concentrationData = actor.getFlag("midi-qol", "concentration-data");
+      if (!concentrationData) return;
+      try {
+        await actor.unsetFlag("midi-qol", "concentration-data")
+        if (concentrationData.templates) {
+          for (let templateUuid of concentrationData.templates) {
+            const template = await fromUuid(templateUuid);
+            if (template) await template.delete();
           }
         }
+        for (let removeUuid of concentrationData.removeUuids) {
+          const entity = await fromUuid(removeUuid);
+          if (entity) await entity.delete(); // TODO check if this needs to be run as GM
+        }
+        await deleteItemEffects({ ignore: [effect.uuid], targets: concentrationData.targets, origin: concentrationData.uuid, ignoreTransfer: true });
+      } catch (err) {
+        error("error when attempting to remove concentration ", err)
       }
-    }
-    // if (globalThis.DAE?.actionQueue) globalThis.DAE.actionQueue.add(changefunc);
-    changefunc();
+    };
+    changeFunc();
   })
 
   // Hooks.on("restCompleted", restManager); I think this means 1.6 is required.
   Hooks.on("dnd5e.restCompleted", restManager);
 
-  if (game.settings.get("midi-qol", "itemUseHooks") && game.system.id === "dnd5e") {
-    // Hooks.on("dnd5e.preUseItem", preItemUseHook);
-    Hooks.on("dnd5e.preItemUsageConsumption", preItemUsageConsumptionHook);
-    // Hooks.on("dnd5e.useItem", useItemHook);
-    // Hooks.on("dnd5e.preDisplayCard", preDisplayCardHook);
-    // Hooks.on("dnd5e.displayCard", displayCardHook); - displayCard is wrapped instead.
-    // Hooks.on("dnd5e.preRollAttack", preRollAttackHook);
-    // Hooks.on("dnd5e.preRollAttack", (item, rollConfig) => {return preRollMacro(item, rollConfig, "dnd5e.preRollttack")});
-    // Hooks.on("dnd5e.rollAttack", rollAttackMacro);
-
-    // Hooks.on("dnd5e.rollAttack", rollAttackHook)
-    Hooks.on("dnd5e.preRollDamage", (item, rollConfig) => {
-      preRollDamageHook(item, rollConfig)
-      // && preRollMacro(item, rollConfig, "dnd5e.preRollDamage");
-    });
-    // Hooks.on("dnd5e.rollDamage", rollDamageMacro)
-    // Hooks.on("dnd5e.rollDamage", rollDamageHook)
-    // Hooks.on("dnd5e.preRollFormula", (item, rollConfig) => {return preRollMacro(item, rollConfig, "dnd5e.preRollFormula")});
-    // Hooks.on("dnd5e.rollFormula", rollFormulaMacro);
-    // Hooks.on("dnd5e.preRollToolCheck", (item, rollConfig) => preRollMacro(item, rollConfig, "dnd5e.preRollToolCheck"));
-    // Hooks.on("dnd5e.rollToolCheck", rollToolCheckMacro);
-    // Hooks.on("dnd5e.preRollAbilitySave", preRollAbilitySaveHook);
-    // Hooks.on("dnd5e.preRollAbilityTest", preRollAbilitySaveHook);
-    // Hooks.on("dnd5e.rollAbilitySave", rollAbilitySaveHook);
-    // Hooks.on("dnd5e.rollAbilityTest", rollAbilityTestHook)
-  } else {
-    Hooks.on("dnd5e.preItemUsageConsumption", preItemUsageConsumptionHook);
-    Hooks.on("dnd5e.preRollDamage", (item, rollConfig) => {
-      return preRollDamageHook(item, rollConfig)
-    });
-    // Hooks.on("dnd5e.rollDamage", rollDamageMacro);
-  }
-
-  Hooks.on("updateCombat", (combat: Combat, update, options, userId) => {
-    if (userId !== game.user?.id) return;
-    if (!update.hasOwnProperty("round")) return;
-    if (!checkMechanic("autoRerollInitiative")) return;
-    let combatantIds: any = combat.combatants.map(c => c.id);
-    if (combat.combatants?.size > 0) {
-      combat.rollInitiative(combatantIds, { updateTurn: true }).then(() => combat.update({ turn: 0 }));
-    }
-  });
-
-  Hooks.on("dnd5e.preRollDeathSave", preRollDeathSaveHook);
   // Concentration Check is rolled as an item roll so we need an item.
   if (installedModules.get("combat-utility-belt")) {
     //@ts-ignore game.cub
@@ -300,10 +229,9 @@ export function initHooks() {
     }
     if (debugEnabled > 1) debug("Finished the roll", wfuuid)
   });
-
+  
   setupMidiFlagTypes();
   Hooks.on("applyActiveEffect", midiCustomEffect);
-  Hooks.on("preCreateActiveEffect", lookupItemMacro);
   // Hooks.on("preCreateActiveEffect", checkImmunity); Disabled in lieu of having effect marked suppressed
   Hooks.on("preUpdateItem", preUpdateItemActorOnUseMacro);
   Hooks.on("preUpdateActor", preUpdateItemActorOnUseMacro);
@@ -341,7 +269,7 @@ export function initHooks() {
 
     if (installedModules.get("dfreds-convenient-effects")) {
       //@ts-ignore dfreds
-      const ceForItem = game.dfreds.effects.all.find(e => (e.name || e.label) === app.object.name);
+      const ceForItem = game.dfreds.effects.all.find(e => e.name === app.object.name);
       if (ceForItem) {
         const element = html.find('input[name="system.chatFlavor"]').parent().parent();
         if (["both", "cepri", "itempri"].includes(configSettings.autoCEEffects)) {
@@ -427,7 +355,7 @@ export function initHooks() {
       y: coords[1],
       height: grid_size?.size!,
       width: grid_size?.size!
-    }, { releaseOthers: true });
+    }, {releaseOthers: true});
     if (targetCount === 0) {
       ui.notifications?.warn("No target selected");
       return true;
@@ -638,13 +566,13 @@ export const itemJSONData = {
     "itemacro": {
       "macro": {
 
-        "_id": null,
-        "name": "Concentration Check - Midi QOL",
-        "type": "script",
-        "author": "devnIbfBHb74U9Zv",
-        "img": "icons/svg/dice-target.svg",
-        "scope": "global",
-        "command": `
+          "_id": null,
+          "name": "Concentration Check - Midi QOL",
+          "type": "script",
+          "author": "devnIbfBHb74U9Zv",
+          "img": "icons/svg/dice-target.svg",
+          "scope": "global",
+          "command": `
               if (MidiQOL.configSettings().autoCheckSaves === 'none') return;
               for (let targetUuid of args[0].targetUuids) {
                 let target = await fromUuid(targetUuid);
@@ -654,13 +582,159 @@ export const itemJSONData = {
                 if (concentrationEffect) await concentrationEffect.delete();
                 }
               }`,
-        "folder": null,
-        "sort": 0,
-        "permission": {
-          "default": 0
-        },
-        "flags": {}
-      }
+          "folder": null,
+          "sort": 0,
+          "permission": {
+            "default": 0
+          },
+          "flags": {}
+        }
     },
   }
 }
+/*
+export const itemJSONDataSave = {
+  "name": "Concentration Check - Midi QOL",
+  "type": "weapon",
+  "img": "./modules/midi-qol/icons/concentrate.png",
+  "system": {
+    "description": {
+      "value": "",
+      "chat": "",
+      "unidentified": ""
+    },
+    "source": "",
+    "quantity": 1,
+    "weight": 0,
+    "price": 0,
+    "attuned": false,
+    "attunement": 0,
+    "equipped": false,
+    "rarity": "",
+    "identified": true,
+    "activation": {
+      "type": "special",
+      "cost": 0,
+      "condition": ""
+    },
+    "duration": {
+      "value": null,
+      "units": ""
+    },
+    "target": {
+      "value": null,
+      "width": null,
+      "units": "",
+      "type": "creature"
+    },
+    "range": {
+      "value": null,
+      "long": null,
+      "units": ""
+    },
+    "uses": {
+      "value": 0,
+      "max": "0",
+      "per": ""
+    },
+    "consume": {
+      "type": "",
+      "target": "",
+      "amount": null
+    },
+    "ability": "",
+    "actionType": "save",
+    "attackBonus": 0,
+    "chatFlavor": "",
+    "critical": null,
+    "damage": {
+      "parts": [],
+      "versatile": ""
+    },
+    "formula": "",
+    "save": {
+      "ability": "con",
+      "dc": 10,
+      "scaling": "flat"
+    },
+    "armor": {
+      "value": 10
+    },
+    "hp": {
+      "value": 0,
+      "max": 0,
+      "dt": null,
+      "conditions": ""
+    },
+    "weaponType": "simpleM",
+    "properties": {
+      "ada": false,
+      "amm": false,
+      "fin": false,
+      "fir": false,
+      "foc": false,
+      "hvy": false,
+      "lgt": false,
+      "lod": false,
+      "mgc": false,
+      "rch": false,
+      "rel": false,
+      "ret": false,
+      "sil": false,
+      "spc": false,
+      "thr": false,
+      "two": false,
+      "ver": false,
+      "nodam": false,
+      "fulldam": false,
+      "halfdam": true
+    },
+    "proficient": false,
+    "attributes": {
+      "spelldc": 10
+    }
+  },
+  "effects": [],
+  "sort": 0,
+  "flags": {
+    "midi-qol": {
+      "onUseMacroName": "ItemMacro",
+      "isConcentrationCheck": true
+    },
+    "itemacro": {
+      "macro": {
+        "data": {
+          "_id": null,
+          "name": "Concentration Check - Midi QOL",
+          "type": "script",
+          "author": "devnIbfBHb74U9Zv",
+          "img": "icons/svg/dice-target.svg",
+          "scope": "global",
+          "command": `
+              if (MidiQOL.configSettings().autoCheckSaves === 'none') return;
+              for (let targetUuid of args[0].targetUuids) {
+                let target = await fromUuid(targetUuid);
+                if (MidiQOL.configSettings().removeConcentration 
+                  && (target.actor.system.attributes.hp.value === 0 || args[0].failedSaveUuids.find(uuid => uuid === targetUuid))) {
+                const concentrationEffect = MidiQOL.getConcentrationEffect(target.actor);
+                if (concentrationEffect) await concentrationEffect.delete();
+                }
+              }`,
+          "folder": null,
+          "sort": 0,
+          "permission": {
+            "default": 0
+          },
+          "flags": {}
+        }
+      }
+    },
+    "exportSource": {
+      "world": "testWorld",
+      "system": "dnd5e",
+      "coreVersion": "0.8.8",
+      "systemVersion": "1.3.6"
+    },
+  }
+}
+*/

@@ -1,9 +1,9 @@
-import { debug, warn, i18n, error, gameStats, debugEnabled, MQdefaultDamageType, i18nFormat } from "../midi-qol.js";
+import { debug, log, warn, i18n, error, MESSAGETYPES, timelog, gameStats, debugEnabled, MQdefaultDamageType, i18nFormat } from "../midi-qol.js";
 import { dice3dEnabled, installedModules } from "./setupModules.js";
 import { BetterRollsWorkflow, DDBGameLogWorkflow, Workflow, WORKFLOWSTATES } from "./workflow.js";
 import { nsaFlag, coloredBorders, addChatDamageButtons, configSettings, forceHideRoll } from "./settings.js";
-import { createDamageList, MQfromUuid, playerFor, playerForActor, applyTokenDamage, doOverTimeEffect, isInCombat } from "./utils.js";
-import { shouldRollOtherDamage } from "./itemhandling.js";
+import { createDamageList, getTraitMult, calculateDamage, MQfromUuid, MQfromActorUuid, playerFor, playerForActor, applyTokenDamage, doOverTimeEffect, isInCombat } from "./utils.js";
+import { shouldRollOtherDamage, showItemCard } from "./itemhandling.js";
 import { socketlibSocket } from "./GMAction.js";
 export const MAESTRO_MODULE_NAME = "maestro";
 export const MODULE_LABEL = "Maestro";
@@ -180,7 +180,7 @@ export let processCreateBetterRollsMessage = (message: ChatMessage, user: string
     const needsConcentration = workflow.item?.system.components?.concentration || workflow.item?.system.activation?.condition?.includes("Concentration");
     const checkConcentration = configSettings.concentrationAutomation;
     if (needsConcentration && checkConcentration) {
-      const concentrationCheck = item.actor.effects.find(i => (i.name || i.label) === concentrationName);
+      const concentrationCheck = item.actor.effects.find(i => i.label === concentrationName);
       if (concentrationCheck) concentrationCheck.delete();
       // if (needsConcentration)addConcentration({workflow});
     }
@@ -214,7 +214,6 @@ export let processCreateBetterRollsMessage = (message: ChatMessage, user: string
 }
 
 export let diceSoNiceHandler = async (message, html, data) => {
-  return;
   //@ts-ignore game.dice3d
   if (!dice3dEnabled()) return;
   if (debugEnabled > 1) debug("Dice so nice handler ", message, html, data);
@@ -272,16 +271,17 @@ export let colorChatMessageHandler = (message, html, data) => {
   if (!user) return true;
   //@ts-ignore .color not defined
   html[0].style.borderColor = user.color;
-  const sender = html.find('.message-sender')[0];
-  if (!sender) return;
+  // const oldColor = html[0].children[0].children[0].style.backgroundColor;
+  const oldColor = html[0].children[0].children[0].style.backgroundColor;
   if (coloredBorders === "borderNamesBackground") {
-    sender.style["text-shadow"] = `1px 1px 1px #FFFFFF`;
+    html[0].children[0].children[0].style["text-shadow"] = `1px 1px 1px #FFFFFF`;
     //@ts-ignore .color not defined
-    sender.style.backgroundColor = user.color;
+    html[0].children[0].children[0].style.backgroundColor = user.color;
   } else if (coloredBorders === "borderNamesText") {
     //@ts-ignore .color not defined
-    sender.style.color = user.color;
-    sender.style["text-shadow"] = `1px 1px 1px ${sender.style.color}`;
+    html[0].children[0].children[0].style["text-shadow"] = `1px 1px 1px ${html[0].children[0].children[0].style.color}`;
+    //@ts-ignore .color not defined
+    html[0].children[0].children[0].style.color = user.color;
   }
   return true;
 }
@@ -307,7 +307,7 @@ export function checkOverTimeSaves(message, data, options, user) {
     let func = async (actor: Actor, rollFlags: any, roll: Roll) => {
       //@ts-ignore .changes v10
       for (let effect of actor.effects.filter(ef => ef.changes.some(change => change.key === "flags.midi-qol.OverTime"))) {
-        await doOverTimeEffect(actor, effect, true, { saveToUse: roll, rollFlags: data.flags?.dnd5e?.roll, isActionSave: true })
+        await doOverTimeEffect(actor, effect, true, { saveToUse: roll, rollFlags: data.flags?.dnd5e?.roll })
       }
     };
     func(actor, data.flags.dnd5e.roll, message.rolls[0]);
@@ -322,6 +322,7 @@ export let nsaMessageHandler = (message, data, ...args) => {
   gmIds = gmIds.filter(id => !currentIds.includes(id));
   if (debugEnabled > 1) debug("nsa handler active GMs ", gmIds, " current ids ", currentIds, "extra gmIds ", gmIds)
   if (gmIds.length > 0) message.updateSource({ "whisper": currentIds.concat(gmIds) });
+  // TODO check this data.whisper = data.whisper.concat(gmIds);
   return true;
 }
 
@@ -391,7 +392,7 @@ export let hideRollUpdate = (message, data, diff, id) => {
 
 export let hideStuffHandler = (message, html, data) => {
   if (debugEnabled > 1) debug("hideStuffHandler message: ", message.id, message)
-  // if (getProperty(message, "flags.monks-tokenbar")) return;
+  if (getProperty(message, "flags.monks-tokenbar")) return;
   const midiqolFlags = getProperty(message, "flags.midi-qol");
   // Hide non midi rolls which are blind and not the GM if force hide is true
   if (forceHideRoll && !midiqolFlags && message.blind && !game.user?.isGM) {
@@ -587,8 +588,8 @@ export let chatDamageButtons = (message, html, data) => {
     // find the item => workflow => damageList, totalDamage
     const defaultDamageType = (item?.system.damage.parts[0] && item?.system.damage?.parts[0][1]) ?? "bludgeoning";
     // TODO fix this for versatile damage
-    const damageList = createDamageList({ roll: message.rolls[0], item, ammo: null, versatile: false, defaultType: defaultDamageType });
-    const totalDamage = message.rolls[0].total;
+    const damageList = createDamageList({ roll: message.roll, item, versatile: false, defaultType: defaultDamageType });
+    const totalDamage = message.roll.total;
     addChatDamageButtonsToHTML(totalDamage, damageList, html, actorId, itemUuid, "damage", ".dice-total", "position:relative; top:5px; color:blue");
   } else if (getProperty(message, "flags.midi-qol.damageDetail") || getProperty(message, "flags.midi-qol.otherDamageDetail")) {
     let midiFlags = getProperty(message, "flags.midi-qol");
@@ -603,24 +604,17 @@ export function addChatDamageButtonsToHTML(totalDamage, damageList, html, actorI
 
   if (debugEnabled > 1) debug("addChatDamageButtons", totalDamage, damageList, html, actorId, itemUuid, toMatch, html.find(toMatch))
   const btnContainer = $('<span class="dmgBtn-container-mqol"></span>');
-  let btnStylingLimeGreen = `background-color:limegreen; ${style}`;
-  let btnStylingLightGreen = `background-color:lightgreen; ${style}`;
+  let btnStylingGreen = `background-color:lightgreen; ${style}`;
   let btnStylingRed = `background-color:lightcoral; ${style}`;
-  const fullDamageButton = $(`<button class="dice-total-full-${tag}-button dice-total-full-button" style="${btnStylingRed}"><i class="fas fa-user-minus" title="Click to apply up to ${totalDamage} damage to selected token(s)."></i></button>`);
-  const halfDamageButton = $(`<button class="dice-total-half-${tag}-button dice-total-half-button" style="${btnStylingRed}"><i title="Click to apply up to ${Math.floor(totalDamage / 2)} damage to selected token(s).">&frac12;</i></button>`);
-  const quarterDamageButton = $(`<button class="dice-total-quarter-${tag}-button dice-total-quarter-button" style="${btnStylingRed}"><i title="Click to apply up to ${Math.floor(totalDamage / 4)} damage to selected token(s).">&frac14;</i></button>`);
-  const doubleDamageButton = $(`<button class="dice-total-double-${tag}-button dice-total-double-button" style="${btnStylingRed}"><i title="Click to apply up to ${totalDamage * 2} damage to selected token(s).">2</i></button>`);
-  const fullHealingButton = $(`<button class="dice-total-full-${tag}-healing-button dice-total-healing-button" style="${btnStylingLimeGreen}"><i class="fas fa-user-plus" title="Click to heal up to ${totalDamage} to selected token(s)."></i></button>`);
-  const fullTempHealingButton = $(`<button class="dice-total-full-${tag}-temp-healing-button dice-total-healing-button" style="${btnStylingLightGreen}"><i class="fas fa-user-plus" title="Click to add up to ${totalDamage} to selected token(s) temp HP."></i></button>`);
+  const fullDamageButton = $(`<button class="dice-total-full-${tag}-button" style="${btnStylingRed}"><i class="fas fa-user-minus" title="Click to apply up to ${totalDamage} damage to selected token(s)."></i></button>`);
+  const halfDamageButton = $(`<button class="dice-total-half-${tag}-button" style="${btnStylingRed}"><i title="Click to apply up to ${Math.floor(totalDamage / 2)} damage to selected token(s).">&frac12;</i></button>`);
+  const doubleDamageButton = $(`<button class="dice-total-double-${tag}-button" style="${btnStylingRed}"><i title="Click to apply up to ${totalDamage * 2} damage to selected token(s).">x2</i></button>`);
+  const fullHealingButton = $(`<button class="dice-total-full-${tag}-healing-button" style="${btnStylingGreen}"><i class="fas fa-user-plus" title="Click to heal up to ${totalDamage} to selected token(s)."></i></button>`);
 
   btnContainer.append(fullDamageButton);
   btnContainer.append(halfDamageButton);
-  // if (!configSettings.mergeCardCondensed) btnContainer.append(quarterDamageButton);
-  btnContainer.append(quarterDamageButton);
   btnContainer.append(doubleDamageButton);
   btnContainer.append(fullHealingButton);
-  btnContainer.append(fullTempHealingButton);
-
   const toMatchElement = html.find(toMatch);
   toMatchElement.addClass("dmgBtn-mqol");
   toMatchElement.append(btnContainer);
@@ -631,31 +625,42 @@ export function addChatDamageButtonsToHTML(totalDamage, damageList, html, actorI
     button.click(async (ev) => {
       ev.stopPropagation();
       // const item = game.actors.get(actorId).items.get(itemId);
-      const item = MQfromUuid(itemUuid);
+      const item = MQfromUuid(itemUuid)
       const modDamageList = duplicate(damageList).map(di => {
-        if (mult === -1) di.type = "healing";
-        else if (mult === -2) di.type = "temphp";
+        if (mult < 0) di.type = "healing";
         else di.damage = Math.floor(di.damage * mult);
         return di;
       });
 
       // find solution for non-magic weapons
       let promises: Promise<any>[] = [];
-      if (canvas?.tokens?.controlled && canvas?.tokens?.controlled?.length > 0) {
+      if (canvas?.tokens) for (let t of canvas.tokens.controlled) {
         const totalDamage = modDamageList.reduce((acc, value) => value.damage + acc, 0);
+        // export async function applyTokenDamage(damageDetail, totalDamage, theTargets, item, saves, options: { existingDamage: any[], superSavers: Set<any>, semiSuperSavers: Set<any>, workflow: Workflow | undefined, updateContext: any } = { existingDamage: [], superSavers: new Set(), semiSuperSavers: new Set(), workflow: undefined, updateContext: undefined        
         await applyTokenDamage(modDamageList, totalDamage, new Set(canvas.tokens.controlled), item, new Set(),
           { existingDamage: [], superSavers: new Set(), semiSuperSavers: new Set(), workflow: undefined, updateContext: undefined, forceApply: true });
       }
+      /*
+            if (canvas?.tokens) for (let t of canvas.tokens.controlled) {
+              let a: any | null = t.actor;
+              if (!a) continue;
+              let appliedDamage = 0;
+              for (let { damage, type } of damageList) {
+                appliedDamage += Math.floor(damage * getTraitMult(a, type, item));
+              }
+              appliedDamage = Math.floor(Math.abs(appliedDamage)) * mult;
+              let damageItem = calculateDamage(a, appliedDamage, t, totalDamage, "", null);
+              promises.push(a.update({ "system.attributes.hp.temp": damageItem.newTempHP, "system.attributes.hp.value": damageItem.newHP }, { dhp: damageItem.newHP - a.system.attributes.hp.value }));
+            }
+            let retval = await Promise.all(promises);
+            return retval;
+            */
     });
   };
   setButtonClick(`.dice-total-full-${tag}-button`, 1);
   setButtonClick(`.dice-total-half-${tag}-button`, 0.5);
   setButtonClick(`.dice-total-double-${tag}-button`, 2);
-  setButtonClick(`.dice-total-quarter-${tag}-button`, 0.25);
-
   setButtonClick(`.dice-total-full-${tag}-healing-button`, -1);
-  setButtonClick(`.dice-total-full-${tag}-temp-healing-button`, -2);
-
   // logic to only show the buttons when the mouse is within the chat card and a token is selected
   html.find('.dmgBtn-container-mqol').hide();
   $(html).hover(evIn => {
@@ -669,7 +674,6 @@ export function addChatDamageButtonsToHTML(totalDamage, damageList, html, actorI
 }
 
 export function processItemCardCreation(message, user) {
-  if (game.settings.get("midi-qol", "itemUseHooks")) return;
   const midiFlags = message.flags["midi-qol"];
   if (user === game.user?.id && midiFlags?.workflowId) { // check to see if it is a workflow
     const workflow = Workflow.getWorkflow(midiFlags.workflowId);
@@ -684,7 +688,7 @@ export function processItemCardCreation(message, user) {
     }
     if (workflow.kickStart) {
       workflow.kickStart = false;
-      return workflow.next(WORKFLOWSTATES.NONE);
+      workflow.next(WORKFLOWSTATES.NONE);
     }
     workflow.next(WORKFLOWSTATES.AWAITITEMCARD);
   }
@@ -692,7 +696,7 @@ export function processItemCardCreation(message, user) {
 
 export async function onChatCardAction(event) {
   event.preventDefault();
-  // Extract card data - TODO come back and clean up this nastiness
+  // Extract card data
   const button = event.currentTarget;
   button.disabled = true;
   const card = button.closest(".chat-card");
@@ -803,10 +807,7 @@ export function ddbglPendingFired(data) {
     }
     //@ts-ignore
     workflow = new DDBGameLogWorkflow(actor, item, speaker, game.user.targets, {});
-    //@ts-ignore .displayCard
-    item.displayCard({showFullCard: false, workflow, createMessage: false, defaultCard: true});
-    // showItemCard.bind(item)(false, workflow, false, true);
-
+    showItemCard.bind(item)(false, workflow, false, true);
     return;
   }
 

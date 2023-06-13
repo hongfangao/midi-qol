@@ -1,12 +1,14 @@
 import { _mergeUpdate } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/utils/helpers.mjs";
+import { config } from "@league-of-foundry-developers/foundry-vtt-types/src/types/augments/simple-peer";
 import { debug, setDebugLevel, warn, i18n, checkConcentrationSettings, debugEnabled, geti18nTranslations } from "../midi-qol.js";
 import { ConfigPanel} from "./apps/ConfigPanel.js"
 import { SoundConfigPanel } from "./apps/SoundConfigPanel.js";
+import { MidiSounds } from "./midi-sounds.js";
 import { configureDamageRollDialog } from "./patching.js";
 
 export var itemRollButtons: boolean;
 export var criticalDamage: string;
-export var criticalDamageGM: string;
+export var itemDeleteCheck: boolean;
 export var nsaFlag: boolean;
 export var coloredBorders: string;
 export var saveRequests = {};
@@ -56,7 +58,6 @@ class ConfigSettings {
   criticalSound: string = "";
   customSoundsPlaylist: string = "none";
   damageImmunities: string = "none";
-  damageImmunityMultiplier: number = 0.0;
   damageResistanceMultiplier: number = 0.5;
   damageVulnerabilityMultiplier: number = 2;
   defaultSaveMult: number = 0.5;
@@ -90,7 +91,6 @@ class ConfigSettings {
   keyMapping = defaultKeyMapping;
   mergeCard: boolean = false;
   mergeCardCondensed: boolean = false;
-  highlightSuccess: boolean = false;
   optionalRulesEnabled: boolean = false;
   paranoidGM : boolean = false;
   playerRollSaves: string = "none";
@@ -104,23 +104,18 @@ class ConfigSettings {
   recordAOO = "none";
   removeButtons: string = "all";
   removeConcentration: boolean = true;
-  removeConcentrationEffects: string = "effects";
   requireMagical: string = "off";
   requiresTargets: string = "none";
   rollNPCLinkedSaves: string = "auto";
   rollNPCSaves: string = "auto";
   rollOtherDamage: string | boolean = "none";
   rollOtherSpellDamage: string | boolean = "none";
-  rollChecksBlind: boolean = false;
-  rollSavesBlind: boolean = false;
-  rollSkillsBlind: boolean = false;
   saveStatsEvery: number = 20;
   showFastForward: boolean = false;
   showItemDetails: string = "";
   showReactionAttackRoll: string = "all";
   showReactionChatMessage: boolean = false;
   singleConcentrationRoll: boolean = true;
-  skillAbilityCheckAdvantage: boolean = true;
   spellHitSound: string = "";
   spellUseSound: string = "";
   spellUseSoundRanged: string = "";
@@ -131,7 +126,6 @@ class ConfigSettings {
   useCustomSounds: boolean = true;
   usePlayerPortrait: boolean = false;
   useTokenNames: boolean = false;
-  undoWorkflow: boolean = false;
   weaponHitSound: string = "";
   weaponUseSound: string = "";
   weaponUseSoundRanged: string = "";
@@ -140,7 +134,6 @@ class ConfigSettings {
     invisAdvantage: true,
     checkRange: true,
     wallsBlockRange: "center",
-    coverCalculation: "none",
     nearbyFoe: 5,
     nearbyAllyRanged: 0,
     incapacitated: true,
@@ -152,19 +145,11 @@ class ConfigSettings {
     challengModeArmor: false,
     checkFlanking: "off",
     optionalCritRule: -1,
-    criticalNat20: false,
-    actionSpecialDurationImmediate: false,
-    vitalityResource: "system.resources.primary",
-    autoRerollInitiative: false
+    actionSpecialDurationImmediate: false
   };
 }
 
 export var configSettings = new ConfigSettings();
-
-export function checkMechanic(mechanic: string): boolean {
-  if (configSettings.toggleOptionalRules) return false;
-  return configSettings.optionalRules[mechanic];
-}
 
 export function checkRule(rule: string) {
   let rulesEnabled = configSettings.optionalRulesEnabled;
@@ -179,7 +164,7 @@ export function collectSettingData() {
     midiSoundSettings,
     itemRollButtons,
     criticalDamage,
-    criticalDamageGM,
+    itemDeleteCheck,
     nsaFlag,
     coloredBorders,
     addChatDamageButtons,
@@ -201,9 +186,11 @@ export function collectSettingData() {
     //@ts-ignore version v10
     abouttimeVersion: game.modules.get("about-time")?.version,
     //@ts-ignore version v10
-    betterRollsVersion: game.modules.get("ready-set-roll-5e")?.version,
+    betterRollsVersion: game.modules.get("betterrolls5e")?.version,
     //@ts-ignore version v10
     cubVersion: game.modules.get("combat-utility-belt")?.version,
+    //@ts-ignore version v10
+    condvisVersion: game.modules.get("conditional-visibility")?.version,
     //@ts-ignore version v10
     daeVersion: game.modules.get("dae")?.version,
     //@ts-ignore version v10
@@ -255,7 +242,7 @@ export async function importSettingsFromJSON(json) {
   game.settings.set("midi-qol", "ConfigSettings", json.configSettings);
   game.settings.set("midi-qol", "ItemRollButtons", json.itemRollButtons);
   game.settings.set("midi-qol", "CriticalDamage", json.criticalDamage);
-  game.settings.set("midi-qol", "CriticalDamageGM", json.criticalDamageGM);
+  game.settings.set("midi-qol", "ItemDeleteCheck", json.itemDeleteCheck);
   game.settings.set("midi-qol", "showGM", json.nsaFlag);
   game.settings.set("midi-qol", "ColoredBorders", json.coloredBorders);
   game.settings.set("midi-qol", "AddChatDamageButtons", json.addChatDamageButtons);
@@ -294,9 +281,6 @@ export let fetchParams = () => {
   if (configSettings.rollOtherDamage === true) configSettings.rollOtherDamage = "ifSave";
   if (configSettings.rollOtherDamage === undefined) configSettings.rollOtherDamage = "none";
   if (!configSettings.rollOtherSpellDamage) configSettings.rollOtherSpellDamage = "none";
-  if (!configSettings.rollChecksBlind) configSettings.rollChecksBlind = false;
-  if (!configSettings.rollSavesBlind) configSettings.rollSavesBlind = false;
-  if (!configSettings.rollSkillsBlind) configSettings.rollSkillsBlind = false;
   if (configSettings.promptDamageRoll === undefined) configSettings.promptDamageRoll = false;
   if (configSettings.gmHide3dDice === undefined) configSettings.gmHide3dDice = false;
   if (configSettings.ghostRolls === undefined) configSettings.ghostRolls = false;
@@ -328,7 +312,7 @@ export let fetchParams = () => {
   //@ts-ignore
   if (configSettings.rollAlternate === true) configSettings.rollAlternate = "formula";
   if (configSettings.allowActorUseMacro === undefined) configSettings.allowActorUseMacro = configSettings.allowUseMacro;
-  if (configSettings.skillAbilityCheckAdvantage === undefined) configSettings.skillAbilityCheckAdvantage = true;
+
   if (!configSettings.keyMapping 
     || !configSettings.keyMapping["DND5E.Advantage"] 
     || !configSettings.keyMapping["DND5E.Disadvantage"]
@@ -346,12 +330,10 @@ export let fetchParams = () => {
   if (typeof configSettings.requiresTargets !== "string") configSettings.requiresTargets = "none";
   if (configSettings.tempHPDamageConcentrationCheck === undefined) configSettings.tempHPDamageConcentrationCheck = false;
   if (configSettings.showFastForward === undefined) configSettings.showFastForward = true;
-  if (configSettings.highlightSuccess === undefined) configSettings.highlightSuccess = false;
-  configSettings.optionalRules = mergeObject({ // eventually split this into mechanics and rules
+  configSettings.optionalRules = mergeObject({
       invisAdvantage: true,
       checkRange: true,
       wallsBlockRange: "center",
-      coverCalculation: "none",
       nearbyFoe: 5,
       nearbyAllyRanged: 0,
       incapacitated: true,
@@ -364,13 +346,11 @@ export let fetchParams = () => {
       challengeModeArmorScale: false,
       checkFlanking: "off",
       optionalCritRule: -1,
-      criticalNat20: false,
       actionSpecialDurationImmediate: false
+
     }, configSettings.optionalRules ?? {}, {overwrite: true, insertKeys: true, insertValues: true});
   if (!configSettings.optionalRules.wallsBlockRange) configSettings.optionalRules.wallsBlockRange = "center";
   if (configSettings.optionalRules.checkFlanking === true) configSettings.optionalRules.checkFlanking = "ceadv";
-  if (!configSettings.optionalRules.coverCalculation) configSettings.optionalRules.coverCalculation = "none";
-
   if (configSettings.optionalRules.checkFlanking === false) configSettings.optionalRules.checkFlanking = "off";
   if (typeof configSettings.requireMagical !== "string" && configSettings.requireMagical !== true) configSettings.requireMagical = "off";
   if (typeof configSettings.requireMagical !== "string" && configSettings.requireMagical === true) configSettings.requireMagical = "nonspell";
@@ -388,14 +368,11 @@ export let fetchParams = () => {
   }
   if (configSettings.defaultSaveMult === undefined) configSettings.defaultSaveMult = 0.5;
   if (configSettings.ignoreSpellReactionRestriction === undefined) configSettings.ignoreSpellReactionRestriction = false;
-  if (configSettings.damageImmunityMultiplier === undefined) configSettings.damageImmunityMultiplier = 0.0;
   if (configSettings.damageResistanceMultiplier === undefined) configSettings.damageResistanceMultiplier = 0.5;
   if (configSettings.damageVulnerabilityMultiplier === undefined) configSettings.damageVulnerabilityMultiplier = 2;
   if (configSettings.hidePlayerDamageCard === undefined) configSettings.hidePlayerDamageCard = true;
   if (configSettings.attackPerTarget === undefined) configSettings.attackPerTarget = false;
   if (configSettings.autoRemoveTemplate === undefined) configSettings.autoRemoveTemplate = true;
-  if (configSettings.removeConcentrationEffects === "undefined") configSettings.removeConcentrationEffects = "effects";
-  if (configSettings.undoWorkflow === undefined) configSettings.undoWorkflow = false;
   configSettings.hidePlayerDamageCard = true;
   configSettings.quickSettings = true;
   enableWorkflow = Boolean(game.settings.get("midi-qol", "EnableWorkflow"));
@@ -403,18 +380,13 @@ export let fetchParams = () => {
   
   criticalDamage = String(game.settings.get("midi-qol", "CriticalDamage"));
   if (criticalDamage === "none") criticalDamage = "default";
-  criticalDamageGM = String(game.settings.get("midi-qol", "CriticalDamageGM"));
-  if (criticalDamageGM === "none") criticalDamageGM = criticalDamage;
+  itemDeleteCheck = Boolean(game.settings.get("midi-qol", "ItemDeleteCheck"));
   nsaFlag = Boolean(game.settings.get("midi-qol", "showGM"));
   coloredBorders = String(game.settings.get("midi-qol", "ColoredBorders"));
   itemRollButtons = Boolean(game.settings.get("midi-qol", "ItemRollButtons"));
   addChatDamageButtons = String(game.settings.get("midi-qol", "AddChatDamageButtons"))
   autoFastForwardAbilityRolls = Boolean(game.settings.get("midi-qol", "AutoFastForwardAbilityRolls"));
   autoRemoveTargets = String(game.settings.get("midi-qol", "AutoRemoveTargets"));
-  if (autoRemoveTargets === "allGM") {
-    autoRemoveTargets = game.user?.isGM ? "all" : "dead";
-    game.settings.set("midi-qol", "AutoRemoveTargets", autoRemoveTargets);
-  }
   let debugText: string = String(game.settings.get("midi-qol", "Debug"));
   forceHideRoll = Boolean(game.settings.get("midi-qol", "ForceHideRoll"));
   dragDropTargeting = Boolean(game.settings.get("midi-qol", "DragDropTarget"));
@@ -453,6 +425,15 @@ const settings = [
     scope: "world",
     default: true,
     type: Boolean,
+    onChange: fetchParams
+  },
+  {
+    name: "ItemDeleteCheck",
+    scope: "client",
+    default: true,
+    type: Boolean,
+    choices: [],
+    config:true,
     onChange: fetchParams
   },
   {
@@ -512,31 +493,9 @@ const settings = [
     config: false
   }
 ];
-
-export function readySettingsSetup() {
-  if (game.settings.get("midi-qol", "CriticalDamage") === "none") {
-    criticalDamage = "default;"
-    game.settings.set("midi-qol", "CriticalDamage", "default");
-  }
-  if (game.settings.get("midi-qol", "CriticalDamageGM") === "none") {
-    criticalDamageGM = criticalDamage;
-    game.settings.set("midi-qol", "CriticalDamageGM", criticalDamage);
-  }
-}
-
 export function registerSetupSettings() {
   const translations = geti18nTranslations();
 
-  game.settings.register("midi-qol","CriticalDamageGM", {
-    name: "midi-qol.CriticalDamageGM.Name",
-    // hint: "midi-qol.CriticalDamageGM.Hint",
-    scope: "world",
-    default: "none",
-    type: String,
-    config: true,
-    choices: translations["CriticalDamageChoices"],
-    onChange: fetchParams
-  });
   game.settings.register("midi-qol","CriticalDamage", {
     name: "midi-qol.CriticalDamage.Name",
     hint: "midi-qol.CriticalDamage.Hint",
@@ -547,9 +506,7 @@ export function registerSetupSettings() {
     choices: translations["CriticalDamageChoices"],
     onChange: fetchParams
   });
-
 }
-
 export const registerSettings = function() {
   const translations = geti18nTranslations();
   // Register any custom module settings here
@@ -569,9 +526,9 @@ export const registerSettings = function() {
     game.settings.register("midi-qol", setting.name, options);
   });
 
-  game.settings.register("midi-qol","CriticalDamageGM", {
-    name: "midi-qol.CriticalDamageGM.Name",
-    // hint: "midi-qol.CriticalDamageGM.Hint",
+  game.settings.register("midi-qol","CriticalDamage", {
+    name: "midi-qol.CriticalDamage.Name",
+    hint: "midi-qol.CriticalDamage.Hint",
     scope: "world",
     default: "none",
     type: String,
@@ -579,17 +536,6 @@ export const registerSettings = function() {
     choices: translations["CriticalDamageChoices"],
     onChange: fetchParams
   });
-  game.settings.register("midi-qol","CriticalDamage", {
-    name: "midi-qol.CriticalDamage.Name",
-    hint: "midi-qol.CriticalDamage.Hint",
-    scope: "world",
-    default: "default",
-    type: String,
-    config: true,
-    choices: translations["CriticalDamageChoices"],
-    onChange: fetchParams
-  });
-
 
   game.settings.register("midi-qol","AddChatDamageButtons", {
     name: "midi-qol.AddChatDamageButtons.Name",
@@ -629,7 +575,7 @@ export const registerSettings = function() {
   game.settings.register("midi-qol", "AutoRemoveTargets", {
     name: "midi-qol.AutoRemoveTargets.Name",
     hint: "midi-qol.AutoRemoveTargets.Hint",
-    scope: "client",
+    scope: "world",
     default: "dead",
     type: String,
     config: true,
@@ -704,31 +650,6 @@ export const registerSettings = function() {
     config: false,
     default: true
   })
-
-  game.settings.register("midi-qol", "itemUseHooks", {
-    name: "midi-qol.itemUseHooks.Name",
-    hint: "midi-qol.itemUseHooks.Hint",
-    type: Boolean,
-    config: true,
-    default: false,
-    //@ts-ignore v10
-    requiresReload: true
-  });
-
-  game.settings.register("midi-qol", "last-run-version", {
-    type: String,
-    config: false,
-    default: "0.0.0",
-    //@ts-ignore v10
-    requiresReload: true
-  });
-  game.settings.register("midi-qol", "instanceId", {
-    type: String,
-    config: false,
-    default: "",
-    //@ts-ignore v10
-    requiresReload: true
-  });
 }
 
 export function disableWorkflowAutomation() {

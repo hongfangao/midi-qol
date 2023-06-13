@@ -1,6 +1,6 @@
 ## Breaking News
-Added a ko-fi donation link https://ko-fi.com/tposney
-Discord link for my modules https://discord.gg/Xd4NEvw5d7
+### World Key Mappings don't work
+Please disable the setting which means key mappings are per client.
 
 ### Custom Sounds rewritten
 You will have to change your configuration
@@ -38,7 +38,7 @@ If you have a standalone macro, or one from (say) the community macros collectio
 If you want to get fancier then change the point at which it is called and have a look at the data passed to onUse macros. Or use a `macro.execute` (some changes may be required) which is only called if active effects are applied to the target.
 
 ## MidiQOL sample items compendium
-midi-qol is an automation tool that is meant to make it possible to automate some/many facets of your game. It is not a library of items that you can plug and play into your game and many great macro modules that play well with midi-qol (too many for me to list and I'm sure I don't know them all).
+midi-qol is an automation tool that is meant to make it possible to automate some/many facets of your game. It is not a library of items that you can plug and play into your game, there are other modules for that like the excellent **DAE SRD** and **Midi SRD**, and many great macro modules that play well with midi-qol (too many for me to list and I'm sure I don't know them all).
 
 Similarly there are some excellent tools for animation effects, beyond those supported directly by dae/midi. I don't know them all and I have no doubt that there are some gems that I simply have not discovered, but do use Automated Animations in my game as well as Token Magic FX.
 
@@ -49,7 +49,8 @@ Over time I have come up with some items that I use in my game, which I think ot
 [TOC]
 
 # Changes in dnd5e 1.5:
-
+## Weapon Critical Threshold
+* dnd5e 1.5 includes per weapon critical threshold and bonus critical damage dice. There is now a configuration setting to enable/disable the midi-qol field on the item sheet. You are strongly encouraged to migrate to the dnd5e setting and disable the midi-qol flag, via Use Midi Critical in the configuration settings. Soon, I will remove the midi-qol field completely. You can run ```MidiQOL.reportMidiCriticalFlags()``` from the console to see which actors/tokens have the midi-qol critical setting defined.
 ## Enhanced dnd5e critical damage effects. 
 You can make most of the changes that midi-qol supports for critical hits via the new game settings (max base dice, double modifiers as well as dice) and per weapon settings (additional dice). If you want to use the dnd5e critical damage fields set the midi-qol critical damage to "dnd5e default"
 
@@ -79,7 +80,7 @@ You can probably survive without these but midi pretty much assumes they are ins
 ## Highly Recommended
 * Either **LMRTFY** or **Monks Token Bar** (or both) to manage saving throws
 * Either **Convenient Effects** or **Combat Utility Belt** (or both)
-* **DAE SRD**/**Midi SRD** (lots of prebuilt items) **These modules do not work with V10 so only use them for ideas, not working items**.
+* **DAE SRD**/**Midi SRD** (lots of prebuilt items)
 * **Active Auras** - works well with midi/dae and some of the sample items require it.
 * **Token Magic** - lets you add some spiffy graphical effects to spells.
 * **SmallTime** - to make time advancement easy.
@@ -87,9 +88,6 @@ You can probably survive without these but midi pretty much assumes they are ins
 * **libChangeLogs** - will show the midi change log when it changes.
 * **DF QoL** - If you want template targeting to work as written in the rules, install this and enable it for template targeting. (apologies to @flamewave000 for the mislabelling)
 * **Warp Gate** - Some of the sample items use warp gate to summon tokens (Flaming Sphere, Spiritual Weapon).
-* **Build-A-Bonus** This moudle allows more complex bonuses to be calculated than dae/midi support by default. The bonus can be attached to an actor/item/active effect. 
-* **Template Macros** Allows you to run a macro when a template is placed, very useful.
-* **Effect Macros** provides another way to trigger behaviour when an effect is applied, combat updates and so on. Allows for more complex over time type effects via macros. The down side is that it does not include all of the midi data that onUseMacros get, but you can use flags.midi-qol...., flags.dae to set some of the values you might need
 
 ## Good To Have
 * **Active Token Lighting.** Allows tokens to emit light
@@ -99,7 +97,6 @@ You can probably survive without these but midi pretty much assumes they are ins
 * **Dice So Nice.** if you like 3d dice rolling it's pretty much the only choice.
 * **Better Rolls.** if you don't like the default dnd attack/damage roll cards. Better Rolls is **mostly** compatible with midi-qol, but there are some wrinkles. I don't use the module so tend to rely on community reports for errors.
 * **FVTTEncounterStats.** If you like to keep data about all the rolls done by players/GM this module goes a lot further than the built in midi-qol roll stats. Worth a look.
-* **Simbul's Cover Calculator** or **Levels Auto Cover** enables the automatic calculation of cover bonues for 1/2, 3/4 cover.
 
 # (In)Compatibilities? ##
 As already mentioned I don't look at lots of modules, so there will be others that do/don't work with midi. As they come to my attention I'll try and update the list.
@@ -116,15 +113,15 @@ Midi-qol can use Monk's Token Bar to roll saves. **Update** adv/dis advantage fo
 ## Dfreds Quality of Life  
 Midi supports the foundry template targeting, DF Qol has support for rules as written template targeting behaviour. There is an option in midi's AoE auto target to use DF QoL's template targeting, which disables midi's internal template targeting. You should only enable one sort of template targeting since mid/df-qol will fight over who gets to do the targeting which will lead to confusing results.
 
-As of version 1.6.0, DF QoL does not seem to have a wall blocking option, so if that is important you'll need to use midi's targeting or another module that supports both.
+As of version 1.6.0, DF QoL does not seem to have a wall blocking option, so if that is important you'll need to use midi's targeting.
 
 ## Convenient Effects
 Midi supports the application of Convenient Effects spell/item effects (configuration setting - Apply Convenient Effects) and matches those by name. For example, if you cast the spell Bless midi will see if there is a convenient effect "Bless" and apply it to any targets that were hit by the spell.
 
-If you have apply convenient effects set and use items from the with DAE effects, **you will get a double up of the effect**. You need to choose how you want the item to behave, if using convenient effects, delete the DAE effects. The double up problem is intentional, since you might wish to augment the Convenient Effect definition with your own extra effects on the item. 
+If you have apply convenient effects set and use items from the DAE SRD/Midi SRD modules, **you will get a double up of the effect**. You need to choose how you want the item to behave, if using convenient effects, delete the DAE SRD effects. The double up problem is intentional, since you might wish to augment the Convenient Effect definition with your own extra effects on the item. 
 
-If you generally use hand crafted effects I suggest setting apply convenient effects to false and then enabling convenient effects on an item by item basis (using the setting below).
-If you generally use convenient effects you would disable the convenient effect for the items that you want to use from DAE hand crafted effects.
+If you generally use DAE SRD/Midi SRD or hand crafted effects I suggest setting apply convenient effects to false and then enabling convenient effects on an item by item basis (using the setting below).
+If you generally use convenient effects you would disable the convenient effect for the items that you want to use from DAE SRD/Midi SRD or hand crafted.
 
 There is an additional check box available on the item sheet, for items that have corresponding convenient effects. The check box reverses the "apply convenient effects setting" for that item. If you have "auto apply convenient effect" set to true, the check box will disable the auto application for that one item. Similarly, if you have "auto apply convenient effect" set to false, the check box will enable the auto application for that one item. 
 
@@ -138,7 +135,7 @@ There is an additional check box available on the item sheet, for items that hav
 If you intend to make use of any of the macro features in midi-qol you will need to install the Advanced Macros module. As of 0.9.56 there is no dependency on advanced macros/furnace.
 
 ## Better Rolls
-If you are using Better Rolls (which is a great module), midi-qol takes over once the hit/damage card is placed by Better Rolls. This means that resource consumption, template placement, critical/fumble determination are **all** handled by Better Rolls before midi-qol kicks in. Midi-qol checks hits, saves, applies damage, and calls active effects. When using Better rolls flags.midi-qol should be applied. As of foundry v10/dnd5e 2.0.0 better rolls is no longer supported. At some point I will look at supporting Ready, Set, Roll (the better rolls successor).
+If you are using Better Rolls (which is a great module), midi-qol takes over once the hit/damage card is placed by Better Rolls. This means that resource consumption, template placement, critical/fumble determination are **all** handled by Better Rolls before midi-qol kicks in. Midi-qol checks hits, saves, applies damage, and calls active effects. When using Better rolls flags.midi-qol should be applied.
 
 ## Magic Items
 **(Thanks to @simone for his help)**
@@ -235,7 +232,7 @@ If you have speed item rolls enabled **Caps-Lock** behaves as if advantage & dis
 If you assign a key multiple meanings the behaviour is going to be confusing at best.
 
 ## Display
-* **Card styles** Midi-qol supports two options for item/attack/damage/save rolls. The Merge card combines all of those rolls into a single card. If Merge card is disabled you will get a separate chat card for each roll, which is the default dnd5e look and feel. The condensed Merge card simply puts attack and damage next to each other to conserve a bit less space. The merge card is recommended.
+* **Card styles** Midi-qol supports two options for item/attack/damage/save rolls. The Merge card combines all of those rolls into a single card. If Merge card is disabled you will get a separate chat card for each roll, which is the default dnd5e look and feel. The condensed Merge card simply puts attack and damage next to each other to conserve a bit more space. The merge card is recommended.
 * **Show Item details in chat card**. You can configure whether the item details are included in the chat card. If disabled, the item description is not added to the card, you can configure which items have the info displayed. If enabled, you can use the dnd5e setting to choose if it is expanded or hidden when displayed. 
 * **Chat cards use token names**. If the field is blank actual actor/token names will be used in the chat card, hits/saves display for non-GMs. If set to a string the actual names will be replaced in the chat cards with the string. This feature is not a replacement for Combat Utility Belts hide names feature, rather it addresses those fields that CUB does not know about. For full hiding of names on cards and the tracker you need to use CUB in conjunction with midi-qol.
 * **Chat cards use token name** By default chat cards are sent with the name of the actor (i.e. "Orc"). If enabled, the name of the token will be used instead (i.e. "Orc with a terrible limp").
@@ -309,18 +306,15 @@ Magic items that roll additional damage if a particular condition is true (slaye
 
 midi will evaluate the activation condition as an expression, providing, the actor, item and target actor's (@target) roll data. For example:
 ```
-    target.details.type.value.includes("dragon")
+    "@target.details.type.value".includes("dragon")
 ```
 will only roll if the target has a type of dragon. 
 
-The evaluation of conditions has changed, You do not need to put @ in front of fields, but still can. If the field is a a string then @ fields must be enclosed in quotes, i.e. "@target.details.type.value".includes("dragon").
-
-
 Specifically midi will populate the expression data with:
-* casting actor, anything from actor.system (direct via @field, e.g. @attributes...),
-* casting actor, anything from actor.flags (via @flags....),
+* casting actor, anything from actor.data.data (direct via @field, e.g. @attributes...),
+* casting actor, anything from actor.data.flags (via @flags....),
 * anything from item.data.data (via @item.damage.),
-* anything from the target.actor.system, via (@target.abilities etc),
+* anything from the target.actor.data.data, via (@target.abilities etc),
 * anything from the workflow itself (via @workflow.attackRoll etc).
 
 **An empty activation condition** will evaluate as true. If you don't want a specific weapon to roll Other Damage set Activation Condition false.
@@ -622,9 +616,7 @@ To help macro writers creating reaction items, args[0] contains an additional fi
 ## Item description text and saving throws
 * **"no damage on save"** (or the localized equivalent) in the item description means targets that save will take no damage. Lots of cantrips are like this. Most cantrips are already in a list that midi maintains automatically, but if your favorite spell is not in the list you can the text to the description.
 * **"full damage on save"** (or the localized equivalent) in the item description means targets that save will take full damage. This is mainly useful for attacks that do full damage on a hit and have a save to avoid the application of a condition, like the mace of disruption and the frightened condition.
-* **"auto fail friendly"** (or the localized equivalent) in the item description then tokens with the same disposition as the caster will auto fail their save. Useful for some spell effects where you don't want friends to save. Also available as a per item property (in the midi properties).
-* **auto save friendly** An item property that means friendly targets will always save against the item.
-
+* **"auto fail friendly"** (or the localized equivalent) in the item description then tokens with the same disposition as the caster will auto fail their save. Useful for some spell effects where you don't want friends to save.
 * If the midi-qol setting **"check spell text"** is enabled and the text "half damage on save" appears in the item description then saves will do 1/2 damage no matter what the default save modifier is set to. When set this means you can change the default modifier to whatever you like for various reasons.
 
 ## flags.midi-qol 
@@ -693,7 +685,7 @@ Negative DR is not supported (i.e. to increase damage taken).
 * flags.midi-qol.magicResistance.all/str/dex etc. Will give advantage on saves versus magical effects (spell or magic effect property set).
 * flags.midi-qol.magicVulnerability.all/str/dex etc. Will give disadvantage on saves versus effects (spell or magic effect property set).
 
-* flags.midi-qol.absorption.damageType (acid/bludgeoning etc.) converts damage of that type to healing when applied to the actor with the flag set. As well as a trye/false value (set via mode CUSTOM) flags.midi-qol.absorption.type, can be a numeric value instead of true false. The damage type will be converted to healing and the quantum of the damage will be multiplied by the specified value (e.g. flags.midi-qol.absorption.acid OVERRIDE 0.5 will convert incoming acid damage to healing 1/2 of the acid damage). Negative numbers can be specified. So flags.midi-qol.absorption.acid ADD -1.5 will cause acid damage to do 1.5 times as much damage and be of type healing so will ignore acid damage resistance/vulnerability.
+* flags.midi-qol.absorption.damageType (acid/bludgeoning etc.) converts damage of that type to healing when applied to the actor with the flag set.
 
 * flags.midi-qol.superSaver.all/dex/str etc. If a save is required then the saver will take 0.5/0 damage on failed/successful save, compared to the normal 1/0.5. Useful for things like rogue's/monks evasion class feature.  
 
@@ -721,28 +713,18 @@ An optional attack bonus prompts the attacker after the attack roll is made, but
 * flags.midi-qol.optional.Name.save.all/fail/str/dex/etc	the bonus is added after the save roll. Requires auto fast-forward		
 * flags.midi-qol.optional.Name.label	label to use in the dialog		
 * flags.midi-qol.optional.Name.count	how many uses the effect has (think lucky which has 3), if absent the bonus will be single use (bardic inspiration), turn for once per turn.   
-* flags.midi-qol.optional.Name.criticalDaamge. If present in the effect then bonus damage will use the existing damage rolls critical damage status and roll bonus damage as critical using the game/midi critical damage settings.
   - **every** - you can use the optional effect on every occurence
   - **reaction** - behaves as a reaction roll, i.e. uses up your reaction
   - **a number** - how many times the effect can be used before expiring
   - **turn** - can be used once per turn (assumes in combat)
   - **@fields** - available if the @field > 0, decrements the @field on use. 
   You can specify a resource to consume in the count field, e.g. @resources.tertiary.value which will decrement the tertiary resource field until it is all used up (i.e. 0). Resources can be set to refresh on rests, so this will support the full uses per day definition.  
-  - **ItemUses.ItemName** - Additional option for optional.NAME.count ItemUses.ItemName, which will use the value of the uses field for the item name ItemName (which must be on the actor), it means you don't need to use a resources entry for these any more. eg `ItemUses.my super duper item`
+
 * flags.midi-qol.optional.Name.ac	bonus to apply to AC of the target - prompted on the target's owner's client. (A bit like a reaction roll)  
-* flags.midi-qol.optional.Name.rollMode, any additional rolls are to be made with the specifid roll mode. Can be useful to hide rolls from the players.
 
 Values for the optional roll bonus flags include a dice expression (added to the roll), a number, reroll (rerolling the roll completely) reroll-max, reroll-min, reroll-kh (reroll with max dice, min dice, or reroll and keep the higher of the original/new roll) or success which changes the roll to 99 ensuring success.
 
 Generally options.Name fields do not work with better rolls due to the way it creates rolls.
-
-## Enhanced traits.dr/di/dv
-* Available from the special traits actor settings, or via active effects.
-* As well as supporting the dnd5e damage resistance/immunity/vulnerabiltiy settings (including the bypass settings) midi-qol provides some additional damage types that can be resisted.
-  - healing/temp healing setting this will reduce/enhance the effect of healing on the character.
-  - (these are deprecated and should not be used) non-magical-physical, non-adamantine-physical, non-silvered-physical
-  - Magical damage/Non-magical damage- resistance/etc to damage defined as magical (see the require magical property setting in the workflow tab and the per item property magical damage)
-  - Spell Damage - resistance etc to damage caused by a spell item.
 
 ## Spell Sculpting: flags.midi-qol.sculptSpell and flags.midi-qol.carefulSpell
 If a spell caster with flags.midi-qol.sculptSpell set to 1, casts an area of effect (template or ranged) Evocation spell, any tokens targeted before casting the spell will always save against the spell and they take no damage from spells that would normally do 1/2 damage on a save. So if casting a fireball into an area with allies, target the allies before casting the spell and they will take no damage.
@@ -755,24 +737,20 @@ flags.midi-qol.OverTime OVERRIDE specification
 ```
 where specification is a comma separated list of fields.
   * turn=start/end (check at the start or end of the actor's turn) The only required field.
-  * allowIncapacitated = true | false. If true allow the item roll even if the token with the effect is incapacitated, useful for things like power word stun.
   * applyCondition=expression, if present must evaluate to true or rest of the processing will be aborted.
   e.g. applyCondition=@attributes.hp.value > 0 - for regeneration.
   * removeCondition=expression, if present and evaluates to true the effect is removed after the rest of the processing.
   Saving Throw: the entire active effect will be removed when the saving throw is made (or the effect duration expires)
   * rollType=check/save/skill (default save), roll an ability check, save or skill.
-  * saveAbility=dex/con/etc prc/perception etc. The actor's ability/skill to use for rolling the saving throw. For actionSaves
+  * saveAbility=dex/con/etc prc/perception etc. The actor's ability/skill to use for rolling the saving throw
   * saveDC=number
-  * saveDamage=halfdamage/nodamage/fulldamage - default nodamage
-  * saveRemove=true/false - remove effect on save - default true.
+  * added saveDamage=halfdamage/nodamage/fulldamage - default nodamage
+  * added saveRemove=true/false - remove effect on save - default true.
   * saveMagic=true/false (default false) The saving throw is treated as a "magic saving throw" for the purposes of magic resistance.
-  * actionSave=true/false. If true midi won't roll the save but leave it to the player. See discussion below.
-  * damageBeforeSave=true/false, true means the damage will be applied before the save is adjudicated (Sword of Wounding). false means the damage will only apply if the save is failed. For actionSaves you can specify more than one save type, e.g. saveAbility=dex|con, means check dex or con saving throws, similarly for abilities, saveAbility=acr|ath to allow an athletics or acrobatics roll.
-  
+  * damageBeforeSave=true/false, true means the damage will be applied before the save is adjudicated (Sword of Wounding). false means the damage will only apply if the save is failed.
   Damage:
   * damageRoll=roll expression, e.g. 3d6
   * damageType=piercing/bludgeoning etc. You can specify "healing" or "temphp" which apply healing or temphp. temphp will only apply if the rolled temphp > exisiting temphp. overtime healing is a way to implement regeneration.
-  * rollMode=one of gmroll, blindroll, publicroll, selfroll and the rollmode will be applied to the overtime item roll.
   * macro="World Macro Name" call the macro as part of the damage application stage, where name must be a world macro, the macro is passed the results of rolling the overTime item, which will include damage done, saving throws made etc., as if it were an OnUse macro of the Overtime item roll.
 
   If the effect is configured to be stackable with a stack count, of say 2, the damage will 3d6 + 3d6.
@@ -805,8 +783,6 @@ where specification is a comma separated list of fields.
   It turns out that overtime effects have lots of applications. One that is not obvious is that you can use the overtime effect as a switch to turn on and off other effects. If you have one effect with multiple changes, one of which is an OverTime effect, they will ALL be applied and ALL removed on a save. Here's a Hold Person, which has an overtime effect for the save and a payload of applying the paralyzed status effect to a target.  
 
   There are quite a lot of effects that require a target to use its action to try and save against the effect. You can add actionSave=true which means overtime effects won't auto roll the save, rather it waits for the actor to roll an appropriate save when it is the actor's turn (just roll the save from the character sheet). This allows you to support "the character can use its action to save against the effect". Simply add actionSave=true to the overtime effect definiton and mid will watch for saving throws on the actors turn (rather than rolling the save automatically) and if the type matches the overtime efffect it will check the roll versus the saveDC and remove the effect if the save is successful.
-
-
 
 ![Hold Person](pictures/HoldPerson.png)
 
@@ -855,7 +831,7 @@ Additional workflow processing options to itemRoll(options). You can set
 * MinorQOL.doRoll and MinorQOL.applyTokenDamage remain supported.
 * MidiQOL.applyTokenDamage is exported.
 * If you have macros that depend on being called when the roll is complete, that is still supported, both "minor-qol.RollComplete" and "midi-qol.RollComplete" as well as "midi-qol.RollComplete.ItemUuid" (where ItemUUid is the uuid of the item doing the roll) are called when the roll is finished. See also the onUse macro field which can be used to achieve similar results.
-* There is a function `async MidiQOL.completeItemUse(item, config, options)` that returns a promise you can await, which will do the entire midi-qol workflow for the item before resolving. This is useful if you want to roll an item and do everything without worrying about saving throws and so on.
+* There is a function `async MidiQOL.completeItemRoll(item, options)` that returns a promise you can await, which will do the entire midi-qol workflow for the item before resolving. This is useful if you want to roll an item and do everything without worrying about saving throws and so on.
 
 It takes the same arguments as midis item.roll:
  * showFullCard: default false
@@ -867,7 +843,7 @@ It takes the same arguments as midis item.roll:
  In addition you can specify (in options)
   * checkGMStatus: boolean, If true non-gm clients will hand the roll to a gm client.
   * targetUuids, if present the roll will target the passed list of token uuids (token.document.uuid) rather than the users (or GMS) current targets.
-  * Additional workflow processing options to completeItemUse(item, config: {}, options: {...., workflowOptions}).
+  * Additional workflow processing options to completeItemRoll(item, options: {...., workflowOptions}).
   You can set: 
   - lateTargeting: boolean to force enable/disable late targeting for the items workflow
   - autoRollAttack: boolean force enable/disable auto rolling of the attack,
@@ -890,8 +866,7 @@ The passed workflow is "live" so changes will affect subsequent actions. In part
   * Hooks.callAll("midi-qol.postCheckSaves", workflow) - called after auto checking saving throws but before displaying who saved. Allows modification of who did/did not save.
   * Hooks.call("midi-qol.preApplyDynamicEffects", workflow) - called before applying active effects. If the call returns false the rest of the workflow is marked complete.
   *  Hooks.callAll("midi-qol.RollComplete", workflow); - called after the workflow is completed.
-  * asyncHooksCall("midi-qol.ReactionFilter", reactions: Item[], options: any, triggerType: string). Reaction type will be one of reaction, reactiondamage, reactionattack. The hook will fire on both the attacking client and on the attackee client.
-  
+
 ## TrapWorkflow
 midi-qol supports a TrapWorkflow, triggered by
 ```
@@ -927,7 +902,7 @@ if (numDice > 5) numDice = 5;
 let undead = ["undead", "fiend"].some(type => (target?.actor.data.data.details.type?.value || "").toLowerCase().includes(type));
 if (undead) numDice += 1;
 if (args[0].isCritical) numDice = numDice * 2;
-let damageRoll = await new Roll(`${numDice}d8`).roll({async: true});
+let damageRoll = new Roll(`${numDice}d8`).roll();
 new MidiQOL.DamageOnlyWorkflow(actor, token, damageRoll.total, "radiant", target ? [target] : [], damageRoll, {flavor: "Divine Smite - Damage Roll (Radiant)", itemCardId: args[0].itemCardId})
 ```
 
@@ -963,12 +938,6 @@ which will call the specified macro on the specified macroPass. macroPass is tak
 The field should contain ONLY the macro name, or the string "ItemMacro" or "ItemMacro.ItemName". 
   - "ItemMacro" means it will call the item macro for the item for the workflow. 
   - "ItemMacro.ItemName" allows you to lookup by name another item that the actor for the workflow has.  
-  - Compendium.scope.compendiumName.macroName/macroId means fetch the macro form the specified compendium, either by name or Id.
-  - funciton.functionName where functionName is any globally accessible function, this is bound to the worklow and the following arguments are passed
-    ```js
-    functionName.bind(workflow)({ speaker, actor, token, character, item, args })
-    ```
-
 You may specify the point at in the workflow when the macro is called.  
 The macro will be called with args[0] containing the current state information for the workflow (see below).
 There are some controls for macro writers to decide when their macro should get executed. 
@@ -989,9 +958,6 @@ There are some controls for macro writers to decide when their macro should get 
 		postActiveEffects: Called after applying active effects
 		all: Called at each of the above
 ```
-There are some addtional actor only onUse macro triggers that can be defined for an actor that trigger when the actor is the target of an attack/spell/feature use
-
-```
   - the macro arguments have an additional parameter args[0].macroPass set to the pass being called, being one of:
     preItemRoll
     templatePlaced
@@ -1008,47 +974,23 @@ There are some addtional actor only onUse macro triggers that can be defined for
     postActiveEffects
 
   - [All] is special, being called with each value of macroPass. You can differentiate via args[0].macroPass to decide which ones to act on.
-
-  There are some additional actor onUse macro triggers (but NOT item triggers) available when the actor is the target of an attack/spell/feature use:
-  ```
-    isAttacked: the actor is a target of an attack
-    isHit: the actor is a target of a hit
-    preSaveTarget: 
-    isSave: the actor makes a successful save in response to being targeted
-    isSaveSuccess: the actor makes a successful save in response to being targeted
-    isSaveFailure: the actor makes a failed save in response to being targeted
-    isDamaged: "the actor is damaged by an item roll
-```
-
-  - For these calls **only** args[0].options.actor will be the actor that was attackd/hit/damaged etc and args[0].options.token is the token.
-  - For the preTargetSave hook is called just before the save is made (direct roll/LMRTFY/MTB) the passed workflow includes saveDetails comprising
-```js
-saveDetails: { advantage: boolean | undefined,
-          disadvantage: boolean | undefined,
-          isFriendly: boolean | undefined,
-          isMagicSave: boolean | undefined,
-          isConcentrationCheck: boolean | undefined,
-          rollDC: number }
-```
-which can be changed in the preTargetSave Hook. Sample item Antitoxin in Midi sample items as a example.
-
   - The default pass is "preActiveEffects", to correspond to the original onUse macro behaviour.
   * Note: if you are creating a damage only workflow in your macro it is best to run it in "postActiveEffects".
   
   * If you wish to make changes to the workflow in these macros you will need to do: 
   ```
-  const workflow = args[0].workflow
+  const workflow = MidiQOL.Workflow.getWorkflow(args[0].uuid)
   workflow.XXX = .....
   ```
-
   * Remember that if the macro is an "Execute as GM" macro the macro may execute on a different client and the workflow may not be defined, i.e. the Workflow.getWorkflow may return undefined.
 
   * If you want to change the damage roll of a weapon have your macro run at the postDamageRoll onUse pass and do something like (this will work with better rolls - the damage will be changed, but the chat card for the item won't update)
-  ```js
+  ```
   if (args[0].tag === "OnUse" && args[0].macroPass === "postDamageRoll") {
     let workflow = MidiQOL.Workflow.getWorkflow(args[0].uuid); // this gets a copy of the "live" workflow
-    const damageRoll = await new Roll("1d10").roll({async: true});
-    workflow.setDamageRoll(damageRoll);
+    workflow.damageRoll = await new Roll("1d10").roll();
+    workflow.damageTotal = workflow.damageRoll.total;
+    workflow.damageRollHTML = await workflow.damageRoll.render();
   }
   ```
   which will replace the items normal damage roll with your custom roll.
@@ -1121,19 +1063,6 @@ hitContent is just html, so you could insert whatever you want in any of the div
 ## Some Tricks you can do...
 This is just a place where I'll write down some ideas that I think are cute. I'll assume that DAE/times-up is available as well.
 
-* dnd5e 2.0.3 includes hooks for just about every stage of item rolling, attack rolling and damage rolling. You can use these hooks to directly impact the roll which gives a great deal of flexibility and removes much of the need for the midi hooks/macro calls.
-For example, to replace the damage roll of an item you can do the following
-  - create a preItemRoll onuse macro, regiester the Hooks globally
-```js
-      const preDamageRollHookId = Hooks.on("dnd5e.preRollDamage", (rolledItem, rollConfig) => {
-        if (rolledItem !== item) return;
-        try {
-          rollConfig.parts = ["2d20[fire]"];
-        } finally {
-          Hooks.off("dnd5e.preRollDamage", preDamageRollHookId);
-        }
-      });
-```
 * DAE has an option, Force Display on Token which enables passive effects to display the effect image on the token when active similarly to how non-transfer effects behave.
 
 * Activation Conditions can be useful to tailor effects without requiring additional macro code. Activation Condition is checked when the config setting for Roll Other Damage is set to activation and allows fine-tuning of bonus damage, think slayer items. The Active Effect Condition allows you to apply active effects to targets, e.g. mace of disruption only frightens undead, use ```['fiend', 'undead'].includes('@raceOrType')``` to only apply active effects to undead.
@@ -1184,7 +1113,7 @@ I've included the complete macro, but the general idea is:
 - Roll the created item to do the save/damage. Uses a newish midi-qol feature that allows you to do a complete roll and complete it before continuing.
 ```js
     const options = { showFullCard: false, createWorkflow: true, versatile: false, configureDialog: false };
-    await MidiQOL.completeItemUse(item, {}, options);
+    await MidiQOL.completeItemRoll(item, options);
 ```
   Here's the complete item macro
 ```js
@@ -1217,7 +1146,7 @@ I've included the complete macro, but the general idea is:
     itemData.flags.autoanimations.killAnim = true;;
     const item = new CONFIG.Item.documentClass(itemData, { parent: theActor })
     const options = { showFullCard: false, createWorkflow: true, versatile: false, configureDialog: false };
-    await MidiQOL.completeItemUse(item, {}, options);
+    await MidiQOL.completeItemRoll(item, options);
 }
 ```
 * Which sort of Macro to use?

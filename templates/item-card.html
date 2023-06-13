@@ -69,7 +69,7 @@
     </button>
     {{/if}}
 
-    {{#if data.formula}}
+    {{#if system.formula}}
     <button data-action="formula">{{ OtherFormula }}</button>
     {{/if}}
 
@@ -80,9 +80,7 @@
     {{#if isTool}}
     <button data-action="toolCheck" data-ability="{{system.ability.value}}">{{ Use }} {{item.name}}</button>
     {{/if}}
-    {{#if hasAbilityCheck}}
-    <button data-action="abilityCheck" data-ability="{{data.ability}}">{{labels.abilityCheck}}</button>
-    {{/if}}
+    
     {{#if hasEffects}}
     <button data-action="applyEffects">{{ localize "midi-qol.ApplyEffects" }}</button>
     {{/if}}
@@ -96,7 +94,7 @@
 
   <footer class="card-footer">
     {{#if showProperties}}
-    {{#each data.properties}}
+    {{#each system.properties}}
     <span>{{this}}</span>
     {{/each}}
     {{/if}}

@@ -1,14 +1,14 @@
-import { registerSettings, fetchParams, configSettings, checkRule, enableWorkflow, midiSoundSettings, fetchSoundSettings, midiSoundSettingsBackup, disableWorkflowAutomation, criticalDamageGM, readySettingsSetup } from './module/settings.js';
+import { registerSettings, fetchParams, configSettings, checkRule, collectSettingData, enableWorkflow, midiSoundSettings, fetchSoundSettings, midiSoundSettingsBackup, disableWorkflowAutomation } from './module/settings.js';
 import { preloadTemplates } from './module/preloadTemplates.js';
 import { checkModules, installedModules, setupModules } from './module/setupModules.js';
-import { itemPatching, visionPatching, actorAbilityRollPatching, patchLMRTFY, readyPatching, initPatching, addDiceTermModifiers } from './module/patching.js';
+import { itemPatching, visionPatching, actorAbilityRollPatching, patchLMRTFY, readyPatching, initPatching } from './module/patching.js';
 import { initHooks, overTimeJSONData, readyHooks, setupHooks } from './module/Hooks.js';
 import { initGMActionSetup, setupSocket, socketlibSocket } from './module/GMAction.js';
 import { setupSheetQol } from './module/sheetQOL.js';
-import { TrapWorkflow, DamageOnlyWorkflow, Workflow, DummyWorkflow, WORKFLOWSTATES } from './module/workflow.js';
-import { addConcentration, applyTokenDamage, canSense, checkNearby, checkRange, completeItemRoll, completeItemUse, computeCoverBonus, displayDSNForRoll, doConcentrationCheck, doOverTimeEffect, findNearby, getChanges, getConcentrationEffect, getDistanceSimple, getDistanceSimpleOld, getSystemCONFIG, getTraitMult, hasUsedBonusAction, hasUsedReaction, midiRenderRoll, MQfromActorUuid, MQfromUuid, playerFor, playerForActor, reportMidiCriticalFlags, setBonusActionUsed, setReactionUsed, tokenForActor } from './module/utils.js';
+import { TrapWorkflow, DamageOnlyWorkflow, Workflow, DummyWorkflow } from './module/workflow.js';
+import { addConcentration, applyTokenDamage, canSense, checkNearby, checkRange, completeItemRoll, completeItemUse, distancePointToken, doConcentrationCheck, doOverTimeEffect, findNearby, getChanges, getConcentrationEffect, getDistance, getDistanceSimple, getSurroundingHexes, getSystemCONFIG, getTraitMult, midiRenderRoll, MQfromActorUuid, MQfromUuid, reportMidiCriticalFlags, tokenForActor } from './module/utils.js';
 import { ConfigPanel } from './module/apps/ConfigPanel.js';
-import { showItemInfo, templateTokens } from './module/itemhandling.js';
+import { showItemCard, showItemInfo, templateTokens } from './module/itemhandling.js';
 import { RollStats } from './module/RollStats.js';
 import { OnUseMacroOptions } from './module/apps/Item.js';
 import { MidiKeyManager } from './module/MidiKeyManager.js';
@@ -113,7 +113,6 @@ Hooks.once('init', async function () {
   preloadTemplates();
   // Register custom sheets (if any)
   initPatching();
-  addDiceTermModifiers();
   globalThis.MidiKeyManager = new MidiKeyManager();
   globalThis.MidiKeyManager.initKeyMappings();
 });
@@ -146,46 +145,28 @@ Hooks.once('setup', function () {
 
   let config = getSystemCONFIG();
 
-
   if (game.system.id === "dnd5e" || game.system.id === "n5e") {
     config.midiProperties = {};
-    // Add additonal vision types? How to modify token properties doing this.
     config.midiProperties["nodam"] = i18n("midi-qol.noDamageSaveProp");
     config.midiProperties["fulldam"] = i18n("midi-qol.fullDamageSaveProp");
     config.midiProperties["halfdam"] = i18n("midi-qol.halfDamageSaveProp");
-    config.midiProperties["autoFailFriendly"] = i18n("midi-qol.FailFriendly");
-    config.midiProperties["autoSaveFriendly"] = i18n("midi-qol.SaveFriendly");
     config.midiProperties["rollOther"] = i18n("midi-qol.rollOtherProp");
     config.midiProperties["critOther"] = i18n("midi-qol.otherCritProp");
-    config.midiProperties["offHandWeapon"] = i18n("midi-qol.OffHandWeapon");
     config.midiProperties["magicdam"] = i18n("midi-qol.magicalDamageProp");
     config.midiProperties["magiceffect"] = i18n("midi-qol.magicalEffectProp");
     config.midiProperties["concentration"] = i18n("midi-qol.concentrationEffectProp");
     config.midiProperties["toggleEffect"] = i18n("midi-qol.toggleEffectProp");
-    config.midiProperties["ignoreTotalCover"] = i18n("midi-qol.ignoreTotalCover");
 
     config.damageTypes["midi-none"] = i18n("midi-qol.midi-none");
-    // sliver, adamant, spell, nonmagic, magic are all deprecated and should only appear as custom
     config.damageResistanceTypes["silver"] = i18n("midi-qol.NonSilverPhysical");
     config.damageResistanceTypes["adamant"] = i18n("midi-qol.NonAdamantinePhysical");
     config.damageResistanceTypes["spell"] = i18n("midi-qol.spell-damage");
     config.damageResistanceTypes["nonmagic"] = i18n("midi-qol.NonMagical");
     config.damageResistanceTypes["magic"] = i18n("midi-qol.Magical");
-    config.damageResistanceTypes["healing"] = config.healingTypes.healing;
-    config.damageResistanceTypes["temphp"] = config.healingTypes.temphp;
+
     config.damageResistanceTypes["healing"] = config.healingTypes.healing;
     config.damageResistanceTypes["temphp"] = config.healingTypes.temphp;
 
-    //@ts-expect-error
-    if (isNewerVersion(game.system.version, "2.0.3")) {
-      //@ts-expect-error
-      game.system.config.traits.di.configKey = "damageResistanceTypes";
-      //@ts-expect-error
-      game.system.config.traits.dr.configKey = "damageResistanceTypes";
-      //@ts-expect-error
-      game.system.config.traits.dv.configKey = "damageResistanceTypes";
-    }
-    config.abilityActivationTypes["reactionpreattack"] = `${i18n("DND5E.Reaction")} ${i18n("midi-qol.reactionPreAttack")}`;
     config.abilityActivationTypes["reactiondamage"] = `${i18n("DND5E.Reaction")} ${i18n("midi-qol.reactionDamaged")}`;
     config.abilityActivationTypes["reactionmanual"] = `${i18n("DND5E.Reaction")} ${i18n("midi-qol.reactionManual")}`;
   } else { // sw5e
@@ -198,7 +179,11 @@ Hooks.once('setup', function () {
     config.midiProperties["concentration"] = i18n("midi-qol.concentrationActivationCondition");
 
     config.damageTypes["midi-none"] = i18n("midi-qol.midi-none");
-
+    config.damageResistanceTypes["silver"] = i18n("midi-qol.nonSilverPhysical");
+    config.damageResistanceTypes["adamant"] = i18n("midi-qol.nonAdamantinePhysical");
+    config.damageResistanceTypes["spell"] = i18n("midi-qol.spell-damage");
+    config.damageResistanceTypes["healing"] = config.healingTypes.healing;
+    config.damageResistanceTypes["temphp"] = config.healingTypes.temphp;
     config.abilityActivationTypes["reactiondamage"] = `${i18n("DND5E.Reaction")} ${i18n("midi-qol.reactionDamaged")}`;
     config.abilityActivationTypes["reactionmanual"] = `${i18n("DND5E.Reaction")} ${i18n("midi-qol.reactionManual")}`;
   }
@@ -228,7 +213,6 @@ Hooks.once('ready', function () {
   // has to be done before setup api.
   MQOnUseOptions = i18n("midi-qol.onUseMacroOptions");
   if (typeof MQOnUseOptions === "string") MQOnUseOptions = {
-    "preTargeting": "Called before targeting is resolved (*)",
     "preItemRoll": "Called before the item is rolled (*)",
     "templatePlaced": "Only called once a template is placed",
     "preambleComplete": "After targeting complete",
@@ -243,60 +227,22 @@ Hooks.once('ready', function () {
     "preDamageApplication": "Before Damage Application",
     "preActiveEffects": "Before Active Effects",
     "postActiveEffects": "After Active Effects ",
-    "isAttacked": "Actor is target of an attack",
-    "isHit": "Actor is target of a hit",
-    "preTargetSave": "Target is about to roll a saving throw",
-    "isSave": "Actor rolled a save",
-    "isSaveSuccess": "Actor rolled a successful save",
-    "isSaveFailure": "Actor failed a saving throw",
-    "preApplyTargetDamage": "Target is about to be damaged by an item",
-    "isDamaged": "Actor is damaged by an attack",
     "all": "All"
   }
   OnUseMacroOptions.setOptions(MQOnUseOptions);
   MidiSounds.midiSoundsReadyHooks();
-  if (game.system.id === "dnd5e") {
-    getSystemCONFIG().characterFlags["spellSniper"] = {
-      name: "Spell Sniper",
-      hint: "Spell Sniper",
-      section: i18n("DND5E.Feats"),
-      type: Boolean
-    };
-
-    if (game.user?.isGM) {
-      const instanceId = game.settings.get("midi-qol", "instanceId");
-      //@ts-expect-error instanceId
-      if ([undefined, ""].includes(instanceId)) {
-        game.settings.set("midi-qol", "instanceId", randomID());
-      }
-      const oldVersion = game.settings.get("midi-qol", "last-run-version");
-      //@ts-expect-error version
-      const newVersion = game.modules.get("midi-qol")?.version;
-      //@ts-expect-error
-      if (isNewerVersion(newVersion, oldVersion)) {
-        console.warn(`midi-qol | instance ${game.settings.get("midi-qol", "instanceId")} version change from ${oldVersion} to ${newVersion}`);
-        game.settings.set("midi-qol", "last-run-version", newVersion);
-        // look at sending a new version has been installed.
-      }
-      readySettingsSetup()
-    }
-
-  }
+  getSystemCONFIG().characterFlags["spellSniper"] = {
+    name: "Spell Sniper",
+    hint: "Spell Sniper",
+    section: i18n("DND5E.Feats"),
+    type: Boolean
+  };
 
   setupMidiQOLApi();
 
-  if (game.user?.isGM) {
-    if (installedModules.get("levelsautocover") && configSettings.optionalRules.coverCalculation === "levelsautocover" && !game.settings.get("levelsautocover", "apiMode")) {
-      game.settings.set("levelsautocover", "apiMode", true)
-      if (game.user?.isGM)
-        ui.notifications?.warn("midi-qol | setting levels auto cover to api mode", { permanent: true })
-    } else if (installedModules.get("levelsautocover") && configSettings.optionalRules.coverCalculation !== "levelsautocover" && game.settings.get("levelsautocover", "apiMode")) {
-      ui.notifications?.warn("midi-qol | Levels Auto Cover is in API mode but midi is not using levels auto cover - you may wish to disable api mode", { permanent: true })
-    }
-  }
   if (game.settings.get("midi-qol", "splashWarnings") && game.user?.isGM) {
     if (game.user?.isGM && !installedModules.get("dae")) {
-      ui.notifications?.warn("Midi-qol requires DAE to be installed and at least version 10.0.9 or many automation effects won't work");
+      ui.notifications?.warn("Midi-qol requires DAE to be installed and at least version 0.9.05 or many automation effects won't work");
     }
     if (game.user?.isGM && game.modules.get("betterrolls5e")?.active && !installedModules.get("betterrolls5e")) {
       ui.notifications?.warn("Midi QOL requires better rolls to be version 1.6.6 or later");
@@ -330,11 +276,11 @@ Hooks.once('ready', function () {
   setTimeout(MidiSounds.getWeaponBaseTypes, 5000);
   if (installedModules.get("betterrolls5e")) {
     //@ts-ignore console:
-    ui.notifications?.error("midi-qol automation disabled", { permanent: true, console: true })
+    ui.notifications?.error("midi-qol automation disabled", {permanent: true, console: true})
     //@ts-ignore console:
-    ui.notifications?.error("Please make sure betterrolls5e is disabled", { permanent: true, console: true })
+    ui.notifications?.error("Please make sure betterrolls5e is disabled", {permanent: true, console: true})
     //@ts-ignore console:
-    ui.notifications?.error("Until further notice better rolls is NOT compatible with midi-qol", { permanent: true, console: true })
+    ui.notifications?.error("Until further notice better rolls is NOT compatible with midi-qol", {permanent: true, console: true})
     disableWorkflowAutomation();
     setTimeout(disableWorkflowAutomation, 2000)
   }
@@ -344,8 +290,6 @@ Hooks.once('ready', function () {
 
 
 import { setupMidiTests } from './module/tests/setupTest.js';
-import { getUndoQueue, removeMostRecentWorkflow, showUndoQueue, undoMostRecentWorkflow } from './module/undo.js';
-import { showUndoWorkflowApp, UndoWorkflow } from './module/apps/UndowWorkflow.js';
 Hooks.once("midi-qol.midiReady", () => {
   setupMidiTests();
 });
@@ -357,38 +301,33 @@ function setupMidiQOLApi() {
 
   //@ts-ignore
   window.MinorQOL = {
-    doRoll: () => { console.error("MinorQOL is no longer supported please use MidiQOL.doRoll") },
-    applyTokenDamage: () => { console.error("MinorQOL is no longer supported please use MidiQOL.applyTokenDamage") },
+    doRoll: () => {console.error("MinorQOL is no longer supported please use MidiQOL.doRoll")},
+    applyTokenDamage: () => {console.error("MinorQOL is no longer supported please use MidiQOL.applyTokenDamage")},
   }
   //@ts-ignore
   globalThis.MidiQOL = {
     addConcentration,
     applyTokenDamage,
-    canSense,
+    canSense, 
     checkNearby,
     checkRange,
     checkRule: checkRule,
     completeItemRoll,
     completeItemUse,
-    computeCoverBonus,
-    computeDistance: getDistanceSimple,
     ConfigPanel,
     configSettings: () => { return configSettings },
     DamageOnlyWorkflow,
     debug,
     doConcentrationCheck,
     doOverTimeEffect,
-    displayDSNForRoll,
     DummyWorkflow,
     enableWorkflow,
     findNearby,
     gameStats,
-    getChanges, // (actorOrItem, key) - what effects on the actor or item target the specific key
+    getChanges,
     getConcentrationEffect,
-    getDistance: getDistanceSimpleOld,
+    getDistance: getDistanceSimple,
     getTraitMult: getTraitMult,
-    hasUsedBonusAction,
-    hasUsedReaction,
     log,
     midiFlags,
     midiRenderRoll,
@@ -398,24 +337,15 @@ function setupMidiQOLApi() {
     MQFromUuid: MQfromUuid,
     MQOnUseOptions,
     overTimeJSONData,
-    playerFor,
-    playerForActor,
     reportMidiCriticalFlags: reportMidiCriticalFlags,
     selectTargetsForTemplate: templateTokens,
-    setBonusActionUsed,
-    setReactionUsed,
+    showItemCard,
     showItemInfo,
     socket: () => { return socketlibSocket },
     tokenForActor,
     TrapWorkflow,
     warn,
     Workflow,
-    WORKFLOWSTATES,
-    showUndoQueue,
-    getUndoQueue,
-    undoMostRecentWorkflow,
-    removeMostRecentWorkflow,
-    showUndoWorkflowApp
   };
   globalThis.MidiQOL.actionQueue = new Semaphore();
 }
@@ -494,8 +424,6 @@ function setupMidiFlags() {
   midiFlags.push("flags.midi-qol.critical.all")
   midiFlags.push(`flags.midi-qol.max.damage.all`);
   midiFlags.push(`flags.midi-qol.min.damage.all`);
-  midiFlags.push(`flags.midi-qol.grants.max.damage.all`);
-  midiFlags.push(`flags.midi-qol.grants.min.damage.all`);
   midiFlags.push("flags.midi-qol.noCritical.all")
   midiFlags.push("flags.midi-qol.fail.all")
   midiFlags.push("flags.midi-qol.fail.attack.all")
@@ -503,7 +431,6 @@ function setupMidiFlags() {
   midiFlags.push(`flags.midi-qol.grants.disadvantage.attack.all`);
   // TODO work out how to do grants damage.max
   midiFlags.push(`flags.midi-qol.grants.attack.success.all`);
-  midiFlags.push(`flags.midi-qol.grants.attack.fail.all`);
   midiFlags.push(`flags.midi-qol.grants.attack.bonus.all`);
   midiFlags.push(`flags.midi-qol.grants.critical.all`);
   midiFlags.push(`flags.midi-qol.grants.critical.range`);
@@ -519,7 +446,6 @@ function setupMidiFlags() {
   midiFlags.push(`flags.midi-qol.carefulSpells`);
   midiFlags.push("flags.midi-qol.magicResistance.all")
   midiFlags.push("flags.midi-qol.magicVulnerability.all")
-  midiFlags.push("flags.midi-qol.rangeOverride.attack.all")
 
   let attackTypes = allAttackTypes.concat(["heal", "other", "save", "util"])
 
@@ -535,14 +461,11 @@ function setupMidiFlags() {
     midiFlags.push(`flags.midi-qol.fail.critical.${at}`);
     midiFlags.push(`flags.midi-qol.grants.attack.bonus.${at}`);
     midiFlags.push(`flags.midi-qol.grants.attack.success.${at}`);
-    if (at !== "heal") midiFlags.push(`flags.midi-qol.DR.${at}`);
+    midiFlags.push(`flags.midi-qol.DR.${at}`);
     midiFlags.push(`flags.midi-qol.max.damage.${at}`);
     midiFlags.push(`flags.midi-qol.min.damage.${at}`);
-    midiFlags.push(`flags.midi-qol.grants.max.damage.${at}`);
-    midiFlags.push(`flags.midi-qol.grants.min.damage.${at}`);
     midiFlags.push(`flags.midi-qol.optional.NAME.attack.${at}`);
     midiFlags.push(`flags.midi-qol.optional.NAME.damage.${at}`);
-    midiFlags.push(`flags.midi-qol.rangeOverride.attack.${at}`);
   });
   midiFlags.push("flags.midi-qol.advantage.ability.all");
   midiFlags.push("flags.midi-qol.advantage.ability.check.all");
@@ -606,27 +529,18 @@ function setupMidiFlags() {
     });
     midiFlags.push(`flags.midi-qol.DR.all`);
     midiFlags.push(`flags.midi-qol.DR.non-magical`);
-    midiFlags.push(`flags.midi-qol.DR.non-magical-physical`);
     midiFlags.push(`flags.midi-qol.DR.non-silver`);
     midiFlags.push(`flags.midi-qol.DR.non-adamant`);
     midiFlags.push(`flags.midi-qol.DR.non-physical`);
     midiFlags.push(`flags.midi-qol.DR.final`);
-    midiFlags.push(`flags.midi-qol.damage.reroll-kh`);
-    midiFlags.push(`flags.midi-qol.damage.reroll-kl`);
 
     Object.keys(config.damageResistanceTypes).forEach(dt => {
       midiFlags.push(`flags.midi-qol.DR.${dt}`);
     })
     midiFlags.push(`flags.midi-qol.DR.healing`);
     midiFlags.push(`flags.midi-qol.DR.temphp`);
-  } else if (game.system.id === "sw5e") {
-    midiFlags.push(`flags.midi-qol.DR.all`);
-    midiFlags.push(`flags.midi-qol.DR.final`);
-    Object.keys(config.damageResistanceTypes).forEach(dt => {
-      midiFlags.push(`flags.midi-qol.DR.${dt}`);
-    })
-    midiFlags.push(`flags.midi-qol.DR.healing`);
-    midiFlags.push(`flags.midi-qol.DR.temphp`);
+
+
   }
 
   midiFlags.push(`flags.midi-qol.optional.NAME.attack.all`);
@@ -645,6 +559,7 @@ function setupMidiFlags() {
   midiFlags.push(`flags.midi-qol.optional.NAME.criticalDamage`);
   midiFlags.push(`flags.midi-qol.optional.Name.onUse`);
   midiFlags.push(`flags.midi-qol.optional.NAME.macroToCall`);
+
 
   midiFlags.push(`flags.midi-qol.uncanny-dodge`);
   midiFlags.push(`flags.midi-qol.OverTime`);

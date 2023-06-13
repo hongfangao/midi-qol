@@ -3,7 +3,7 @@
   "title": "Midi QOL",
   "description": "Automates rolling weapon/spell attacks and applying damage",
 
-  "version": "10.0.43",
+  "version": "10.0.10",
   "authors": [{ "name": "tposney" }],
   "socket": true,
   "scripts": [],
@@ -15,15 +15,8 @@
         "id": "dnd5e",
         "type": "system",
         "compatibility": {
-          "minimum": "2.0.3"
-        }
-      },
-      {
-        "id": "sw5e",
-        "type": "system",
-        "compatibility": {
-          "minimum": "2.0.2.2.2.5",
-          "compatible": "2.0.2.2.2.5"
+          "minimum": "2.0.1",
+          "compatible": "2.0.1"
         }
       }
     ],
@@ -34,10 +27,6 @@
       },
       {
         "id": "lib-wrapper",
-        "type": "module"
-      },
-      {
-        "id": "dae",
         "type": "module"
       }
     ]
@@ -50,7 +39,7 @@
       "module": "world",
       "type": "Item",
       "system": "dnd5e",
-      "lang": []
+      "lang": ["en", "de"]
     }
   ],
   "languages": [
@@ -96,9 +85,9 @@
     }
   ],
   "compatibility": {
-    "minimum": 10.286,
+    "minimum": 10,
     "verified": 10,
-    "maximum": 11
+    "maximum": 10
   },
   "bugs": "https://gitlab.com/tposney/midi-qol/-/issues",
   "flags": {
@@ -106,6 +95,6 @@
   },
   "url": "https://gitlab.com/tposney/midi-qol",
   "manifest": "https://gitlab.com/tposney/midi-qol/raw/v10/package/module.json",
-  "download": "https://gitlab.com/tposney/midi-qol/raw/v10/package/midi-qol-v10.0.43.zip",
+  "download": "https://gitlab.com/tposney/midi-qol/raw/v10/package/midi-qol-v10.0.10.zip",
   "changelog": "https://gitlab.com/tposney/midi-qol/raw/v10/Changelog.md"
 }

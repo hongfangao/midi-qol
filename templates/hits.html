@@ -6,8 +6,8 @@
     {{#each hits as |hit iid|}}
     <div class="midi-qol-flex-container">
       {{#if ../showHits}}
-      <div style="{{hit.hitStyle}}">
-        <strong>{{hit.hitString}}</strong>
+      <div>
+        {{hit.hitString}}
         {{#if ../displayHitResultNumeric}}
         ({{hit.hitResultNumeric}})
         {{/if}}

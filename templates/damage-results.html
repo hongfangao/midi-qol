@@ -48,7 +48,7 @@
               </div>
             </td>
 
-            <td style="text-align:center;" >
+            <td style="text-align:center;">
               <select id="dmg-multiplier-{{damage.displayUuid}}" title="Choose the multiplier for the damage."">
                 <option value="calc" selected>{{localize "midi-qol.DamageCardCalc"}}</option>
                 <option value="x1">x1</option>
@@ -65,11 +65,8 @@
           font-size: 10px;
           line-height: 1px;
         " aria-label="Click to update {{totalDamage}} x Multiplier accordingly to multiplier.">
-              {{#if ../damageWasApplied}}
-                <i aria-hidden="true" class="fas fa-check midi-qol-disable-damage-button" title="Click to update {{totalDamage}} accordingly to multiplier."></i>
-              {{else}}
-                <i aria-hidden="true" class="fas fa-check midi-qol-enable-damage-button" title="Click to update {{totalDamage}} accordingly to multiplier."></i>
-              {{/if}}
+                <i aria-hidden="true" class="fas fa-check"
+                  title="Click to update {{totalDamage}} accordingly to multiplier."></i>
               </button>
             </td>
             <td style="text-align:center">
@@ -79,11 +76,7 @@
           font-size: 10px;
           line-height: 1px;
         ">
-              {{#if ../damageWasApplied}}
-                  <i aria-hidden="true" class="fas fa-undo midi-qol-enable-damage-button" title="Click to undo damage"></i>
-                {{else}}
-                  <i aria-hidden="true" class="fas fa-undo midi-qol-disable-damage-button" title="Click to undo damage"></i>
-                {{/if}}
+                <i aria-hidden="true" class="fas fa-undo" title="Click to undo damage"></i>
               </button>
             </td>
           </tr>

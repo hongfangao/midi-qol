@@ -1,10 +1,9 @@
-import { configSettings, itemRollButtons } from "./settings.js";
+import { configSettings, itemDeleteCheck, itemRollButtons } from "./settings.js";
 import { i18n, debug, log, warn, debugEnabled } from "../midi-qol.js";
 import { showItemInfo } from "./itemhandling.js";
 import { itemHasDamage, itemIsVersatile } from "./utils.js";
 import { activateMacroListeners } from "./apps/Item.js";
 import { ActorOnUseMacrosConfig } from "./apps/ActorOnUseMacroConfig.js";
-import { Workflow } from "./workflow.js";
 
 
 const knownSheets = {
@@ -34,7 +33,11 @@ let enableSheetQOL = (app, html, data) => {
   // find out how to reinstate the original handler later.
   const defaultTag = ".item .item-image";
   //Add a check for item deletion
-
+  if (itemDeleteCheck) {
+    // remove current handler - this is a bit clunky since it results in a case with no delete handler
+    $(html).find(".item-delete").off("click");
+    $(html).find(".item-delete").click({ app, data: data }, itemDeleteHandler);
+  }
   let rollTag = knownSheets[app.constructor.name] ? knownSheets[app.constructor.name] : defaultTag;
   if (itemRollButtons) {
     if (["Tidy5eSheet", "Tidy5eNPC"].includes(app.constructor.name)) {
@@ -51,8 +54,8 @@ let enableSheetQOL = (app, html, data) => {
     }
   }
   if (configSettings.allowActorUseMacro) {
-    // Add actor macros
-    html.find('.config-button[data-action="flags').parent().parent().append(`<div class="form-fields">
+  // Add actor macros
+    html.find('.config-button[data-action="flags"').parent().parent().append(`<div class="form-fields">
       <label>${i18n("midi-qol.ActorOnUseMacros")}</label>
       <a class="config-button midiqol-onuse-macros" data-action="midi-onuse-macros" title="midi onuse macros">
         <i class="fas fa-cog"></i>
@@ -63,6 +66,32 @@ let enableSheetQOL = (app, html, data) => {
     });
   }
   return true;
+};
+let itemDeleteHandler = ev => {
+  let actor = game.actors?.get(ev.data.data.actor._id);
+  let d = new Dialog({
+    // localize this text
+    title: i18n("midi-qol.reallyDelete"),
+    content: `<p>${i18n("midi-qol.sure")}</p>`,
+    buttons: {
+      delete: {
+        icon: '<i class="fas fa-check"></i>',
+        label: "Delete",
+        callback: () => {
+          let li = $(ev.currentTarget).parents(".item"), itemId = li.attr("data-item-id");
+          ev.data.app.object.items.get(itemId).delete();
+          li.slideUp(200, () => ev.data.app.render(false));
+        }
+      },
+      cancel: {
+        icon: '<i class="fas fa-times"></i>',
+        label: "Cancel",
+        callback: () => { }
+      }
+    },
+    default: "cancel"
+  });
+  d.render(true);
 };
 
 function addItemSheetButtons(app, html, data, triggeringElement = "", buttonContainer = "") {
@@ -138,27 +167,26 @@ function addItemRowButton(target, app, html, data, buttonContainer) {
         ev.preventDefault();
         ev.stopPropagation();
         if (debugEnabled > 1) debug("roll handler ", ev.target.dataset.action);
-        // let event = { shiftKey: ev.shiftKey == true, ctrlKey: ev.ctrlKey === true, metaKey: ev.metaKey === true, altKey: ev.altKey === true };
+        let event = { shiftKey: ev.shiftKey == true, ctrlKey: ev.ctrlKey === true, metaKey: ev.metaKey === true, altKey: ev.altKey === true };
         // If speed rolls are off
         switch (ev.target.dataset.action) {
           case "attack":
-            await item.rollAttack({ event: ev, versatile: false, resetAdvantage: true, systemCard: true });
+            await item.rollAttack({ event, versatile: false, resetAdvantage: true });
             break;
           case "damage":
-            await item.rollDamage({ event: ev, versatile: false, systemCard: true });
+            await item.rollDamage({ event, versatile: false });
             break;
           case "versatileDamage":
-            await item.rollDamage({ event: ev, versatile: true, systemCard: true });
+            await item.rollDamage({ event, versatile: true });
             break;
           case "consume":
-            await item.use({ event: ev, systemCard: true }, {});
+            await item.use({}, { event });
             break;
           case "toolCheck":
-            await item.rollToolCheck({ event: ev, systemCard: true });
+            await item.rollToolCheck({ event });
             break;
           case "basicRoll":
-            Workflow.removeWorkflow(item.uuid);
-            item.use({}, { event: ev, configureDialog: true, systemCard: true });
+            item.use({}, { configureDialog: true, showFullCard: true });
             break;
           case "info":
             await showItemInfo.bind(item)();
@@ -166,7 +194,7 @@ function addItemRowButton(target, app, html, data, buttonContainer) {
       })
     }
   });
-
+ 
 }
 
 function addTidy5eItemSheetButtons(app, html, data) {
@@ -228,29 +256,28 @@ function addTidy5eItemSheetButtons(app, html, data) {
           // If speed rolls are off
           switch (ev.target.dataset.action) {
             case "attack":
-              await item.rollAttack({ event, versatile: false, systemCard: true });
+              await item.rollAttack({ event, versatile: false });
               break;
             case "damage":
-              await item.rollDamage({ event, versatile: false, systemCard: true });
+              await item.rollDamage({ event, versatile: false });
               break;
             case "versatileDamage":
-              await item.rollDamage({ event, versatile: true, systemCard: true });
+              await item.rollDamage({ event, versatile: true });
               break;
             case "consume":
-              await item.use({ event, systemCard: true });
+              await item.roll({ event });
               break;
             case "toolCheck":
-              await item.rollToolCheck({ event, systemCard: true });
+              await item.rollToolCheck({ event });
               break;
             case "basicRoll":
-              Workflow.removeWorkflow(item.uuid);
-              item.use({}, { event, configureDialog: true, systemCard: true });
+              await item.use({ showFullCard: true });
               break;
             case "info":
               await showItemInfo.bind(item)();
           }
         });
-      }
+      } 
     });
   });
 }

@@ -15,15 +15,8 @@
         "id": "dnd5e",
         "type": "system",
         "compatibility": {
-          "minimum": "2.0.3"
-        }
-      },
-      {
-        "id": "sw5e",
-        "type": "system",
-        "compatibility": {
-          "minimum": "2.0.2.2.2.5",
-          "compatible": "2.0.2.2.2.5"
+          "minimum": "2.0.1",
+          "compatible": "2.0.1"
         }
       }
     ],
@@ -34,10 +27,6 @@
       },
       {
         "id": "lib-wrapper",
-        "type": "module"
-      },
-      {
-        "id": "dae",
         "type": "module"
       }
     ]
@@ -50,7 +39,7 @@
       "module": "world",
       "type": "Item",
       "system": "dnd5e",
-      "lang": []
+      "lang": ["en", "de"]
     }
   ],
   "languages": [
@@ -96,17 +85,16 @@
     }
   ],
   "compatibility": {
-    "minimum": 10.286,
+    "minimum": 10,
     "verified": 10,
-    "maximum": 11
+    "maximum": 10
   },
   "bugs": "https://gitlab.com/tposney/midi-qol/-/issues",
   "flags": {
     "allowBugReporter": true
   },
-  "url": "https://gitlab.com/tposney/midi-qol/-/tree/44aa033b67101ffbeec68b336acad0d8231f29c4",
-  "manifest": "https://gitlab.com/tposney/midi-qol/-/raw/44aa033b67101ffbeec68b336acad0d8231f29c4/module.json",
-  "download": "https://gitlab.com/tposney/midi-qol/-/tree/44aa033b67101ffbeec68b336acad0d8231f29c4/package/midi-qol-v{{version}}.zip",
-  "changelog": "https://gitlab.com/tposney/midi-qol/-/blob/44aa033b67101ffbeec68b336acad0d8231f29c4/Changelog.md"
+  "url": "https://gitlab.com/tposney/midi-qol/-/tree/d0caa72c544e46af2e9fce16c23d6a66fb8bf7b4",
+  "manifest": "https://gitlab.com/tposney/midi-qol/-/raw/d0caa72c544e46af2e9fce16c23d6a66fb8bf7b4/module.json",
+  "download": "https://gitlab.com/tposney/midi-qol/-/tree/d0caa72c544e46af2e9fce16c23d6a66fb8bf7b4/package/midi-qol-v{{version}}.zip",
+  "changelog": "https://gitlab.com/tposney/midi-qol/-/blob/d0caa72c544e46af2e9fce16c23d6a66fb8bf7b4/Changelog.md"
 }
-

@@ -11,7 +11,7 @@ export class OnUseMacros {
 
   static parseParts(parts) {
     const macros = new OnUseMacros();
-    parts.items?.forEach(x => macros.items.push(OnUseMacro.parsePart(x)));
+    Object.keys(parts).map(x => parts[x]).forEach(x => macros.items.push(OnUseMacro.parsePart(x)));
     return macros;
   }
 
@@ -45,10 +45,10 @@ export class OnUseMacro {
         this.option = "postActiveEffects";
     }
 
-    static parsePart(parts: {macroName: string, option: string | undefined}) {
+    static parsePart(parts: [string, string]) {
       const m =  new OnUseMacro();
-      m.macroName = parts.macroName;
-      m.option = parts.option ?? m.option;
+      m.macroName = parts[0]
+      m.option = parts[1] ?? m.option;
       return m;
     }
 
@@ -59,8 +59,8 @@ export class OnUseMacro {
     public toListItem (index: Number, macroOptions: OnUseMacroOptions) {    
       const options = OnUseMacroOptions.getOptions?.reduce((opts: string, x: {option: string, label: string}) => opts += `<option value="${x.option}" ${x.option === this.option ? 'selected' : ''}>${x.label}</option>`, "");
       return `<li class="damage-part flexrow" data-midiqol-macro-part="${index}">
-    <input type="text" name="flags.midi-qol.onUseMacroParts.items.${index}.macroName" value="${this.macroName}">
-    <select name="flags.midi-qol.onUseMacroParts.items.${index}.option">
+    <input type="text" name="flags.midi-qol.onUseMacroParts.${index}.0" value="${this.macroName}">
+    <select name="flags.midi-qol.onUseMacroParts.${index}.1">
       ${options}
     </select>
 
@@ -96,7 +96,7 @@ async function _onMacroControl(event){
 
   // Add new macro component
   if ( a.classList.contains("add-macro") ) {
-    const macros = getCurrentSourceMacros(this.object);
+    const macros = getCurrentMacros(this.object);
     await this._onSubmit(event);  // Submit any unsaved changes
     macros.items.push(new OnUseMacro());
     return this.object.update({"flags.midi-qol.onUseMacroName":  macros.toString()});
@@ -104,7 +104,7 @@ async function _onMacroControl(event){
 
   // Remove a macro component
   if ( a.classList.contains("delete-macro") ) {
-    const macros = getCurrentSourceMacros(this.object);
+    const macros = getCurrentMacros(this.object);
     await this._onSubmit(event);  // Submit any unsaved changes
     const li = a.closest(".damage-part");
     macros.items.splice(Number(li.dataset.midiqolMacroPart), 1);
@@ -118,7 +118,7 @@ export function getCurrentMacros(object): OnUseMacros {
 }
 
 export function getCurrentSourceMacros(object): OnUseMacros {
-  const macroField = new OnUseMacros(getProperty(object, "_source.flags.midi-qol.onUseMacroName") ?? null)
+  const macroField = new OnUseMacros(getProperty(object, "_source.flags.midi-qol.onUseMacroParts") ?? null)
   // const macroField = getProperty(object, "_source.flags.midi-qol.onUseMacroParts");
   return macroField;
 }
